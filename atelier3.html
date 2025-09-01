@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EBIOS Risk Manager – Atelier 3</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Shared sidebar -->
+    <aside id="sidebar">
+      <div class="brand">EBIOS RM</div>
+      <div id="analysis-list" class="analysis-list"></div>
+      <button id="new-analysis-btn" class="sidebar-btn">+ Nouvelle analyse</button>
+      <button id="export-all-btn" class="sidebar-btn">Exporter tout</button>
+      <button id="import-btn" class="sidebar-btn">Importer JSON</button>
+      <input type="file" id="import-file" accept="application/json" style="display:none" />
+    </aside>
+    <main id="main">
+      <!-- Analysis title and controls -->
+      <header id="header">
+        <input id="analysis-title" type="text" placeholder="Titre de l'analyse" />
+        <div class="header-buttons">
+          <button id="export-btn" class="header-btn">Exporter</button>
+          <button id="delete-btn" class="header-btn">Supprimer</button>
+        </div>
+      </header>
+      <!-- Navigation between ateliers -->
+      <nav id="tabs">
+        <a href="atelier1.html" class="tab-btn">Atelier 1</a>
+        <a href="atelier2.html" class="tab-btn">Atelier 2</a>
+        <a href="atelier3.html" class="tab-btn active">Atelier 3</a>
+        <a href="atelier4.html" class="tab-btn">Atelier 4</a>
+        <a href="atelier5.html" class="tab-btn">Atelier 5</a>
+      </nav>
+      <!-- Atelier 3: Parties prenantes -->
+      <section id="atelier3" class="tab-content active">
+        <h2>Atelier 3 – Parties prenantes</h2>
+        <!-- Sub‑tab navigation for cartography vs strategic scenarios -->
+        <div class="subtab-nav" id="atelier3-subtabs">
+          <button class="atelier3-subtab-btn active" data-subtab="carto">Cartographie</button>
+          <button class="atelier3-subtab-btn" data-subtab="strategies">Scénarios stratégiques</button>
+        </div>
+        <!-- Chart placed below the sub‑tab navigation and above the table -->
+        <div id="atelier3-chart-container-top" class="chart-wrapper">
+          <canvas id="atelier3-chart" width="600" height="400" class="chart-canvas"></canvas>
+        </div>
+        <div class="atelier-grid">
+          <div class="left">
+            <!-- Cartography sub‑tab -->
+            <div id="atelier3-carto-tab" class="atelier3-subtab-content active">
+              <p>Cartographiez les parties prenantes : nom, catégorie (prestataire, partenaire, bénéficiaire), biens supports associés, valeurs métier associées, dépendance et pénétration (1 = vert à 4 = rouge), maturité SSI et confiance (1 = rouge à 4 = vert). Les champs exposition, niveau SSI et indice de menace sont calculés automatiquement.</p>
+              <div class="table-container" style="overflow-x:auto; margin-bottom:1rem;">
+                <table id="ppc-table" class="data-table" style="min-width:100%;">
+                  <thead>
+                    <tr>
+                      <th>Nom</th>
+                      <th>Catégorie</th>
+                      <th>Biens supports</th>
+                      <th>Valeurs métier</th>
+                      <th>Dépendance</th>
+                      <th>Pénétration</th>
+                      <th>Maturité SSI</th>
+                      <th>Confiance</th>
+                      <th>Exposition</th>
+                      <th>Niveau SSI</th>
+                      <th>Indice de menace</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="ppc-body"></tbody>
+                </table>
+              </div>
+              <button id="add-ppc-btn" class="add-item-btn">+ Ajouter une partie prenante</button>
+            </div>
+            <!-- Strategic scenarios sub‑tab -->
+            <div id="atelier3-strategies-tab" class="atelier3-subtab-content">
+              <p>Définissez vos scénarios stratégiques en reliant une source de risque à un objectif visé, en ajoutant des chemins d’attaque, des intermédiaires (parties prenantes) et des évènements redoutés. La gravité correspond au niveau maximal des évènements sélectionnés.</p>
+              <div class="table-container" style="overflow-x:auto; margin-bottom:1rem;">
+                <table id="strategies-table" class="data-table" style="min-width:100%;">
+                  <thead>
+                    <tr>
+                      <th>Source</th>
+                      <th>Objectif</th>
+                      <th>Chemins d’attaque</th>
+                      <th>Intermédiaires</th>
+                      <th>Évènements redoutés</th>
+                      <th>Gravité</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="strategies-body"></tbody>
+                </table>
+              </div>
+              <button id="add-strategy-btn" class="add-item-btn">+ Ajouter un scénario</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EBIOS Risk Manager – Atelier 5</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Sidebar reused across pages -->
+    <aside id="sidebar">
+      <div class="brand">EBIOS RM</div>
+      <div id="analysis-list" class="analysis-list"></div>
+      <button id="new-analysis-btn" class="sidebar-btn">+ Nouvelle analyse</button>
+      <button id="export-all-btn" class="sidebar-btn">Exporter tout</button>
+      <button id="import-btn" class="sidebar-btn">Importer JSON</button>
+      <input type="file" id="import-file" accept="application/json" style="display:none" />
+    </aside>
+    <main id="main">
+      <!-- Header with analysis title and export/delete buttons -->
+      <header id="header">
+        <input id="analysis-title" type="text" placeholder="Titre de l'analyse" />
+        <div class="header-buttons">
+          <button id="export-btn" class="header-btn">Exporter</button>
+          <button id="delete-btn" class="header-btn">Supprimer</button>
+        </div>
+      </header>
+      <!-- Top navigation between ateliers -->
+      <nav id="tabs">
+        <a href="atelier1.html" class="tab-btn">Atelier 1</a>
+        <a href="atelier2.html" class="tab-btn">Atelier 2</a>
+        <a href="atelier3.html" class="tab-btn">Atelier 3</a>
+        <a href="atelier4.html" class="tab-btn">Atelier 4</a>
+        <a href="atelier5.html" class="tab-btn active">Atelier 5</a>
+      </nav>
+      <!-- Atelier 5 content -->
+      <section id="atelier5" class="tab-content active">
+        <h2>Atelier 5 – Plan d’actions et conformité</h2>
+        <!-- Sub-tabs for the five categories -->
+        <div id="atelier5-subtabs" class="subtab-nav">
+          <button class="atelier5-subtab-btn active" data-subtab="gap">Actions GAP</button>
+          <button class="atelier5-subtab-btn" data-subtab="supports">Actions supports</button>
+          <button class="atelier5-subtab-btn" data-subtab="parties">Actions parties</button>
+          <button class="atelier5-subtab-btn" data-subtab="risques">Actions risques</button>
+          <button class="atelier5-subtab-btn" data-subtab="plan">Plan d'action</button>
+        </div>
+        <!-- Subtab content containers -->
+        <div id="atelier5-gap-tab" class="atelier5-subtab-content active">
+          <p>Liste des exigences de conformité issues du GAP Analysis (non appliquées ou partiellement appliquées). Vous pouvez ajouter une ou plusieurs actions pour chaque exigence ou importer plusieurs exigences à traiter.</p>
+          <div class="subtab-controls">
+            <button id="import-gap-actions-btn" class="import-btn">Importer des exigences</button>
+          </div>
+          <div class="table-container">
+            <table id="gap-actions-table" class="data-table">
+              <thead>
+                <tr>
+                  <th>Exigence</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="gap-actions-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <div id="atelier5-supports-tab" class="atelier5-subtab-content">
+          <p>Sélectionnez un bien support et définissez une ou plusieurs actions de conformité pour celui-ci.</p>
+          <div class="table-container">
+            <table id="support-actions-table" class="data-table">
+              <thead>
+                <tr>
+                  <th>Bien support</th>
+                  <th>Actions</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="support-actions-body"></tbody>
+            </table>
+            <div class="subtab-controls">
+              <button id="add-support-action-row" class="add-item-btn">+ Ajouter un support personnalisé</button>
+            </div>
+          </div>
+        </div>
+        <div id="atelier5-parties-tab" class="atelier5-subtab-content">
+          <p>Sélectionnez une partie prenante et définissez une ou plusieurs actions associées.</p>
+          <div class="table-container">
+            <table id="parties-actions-table" class="data-table">
+              <thead>
+                <tr>
+                  <th>Partie prenante</th>
+                  <th>Actions</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="parties-actions-body"></tbody>
+            </table>
+            <div class="subtab-controls">
+              <button id="import-parties-btn" class="import-btn">Importer des parties</button>
+              <button id="add-partie-action-row" class="add-item-btn">+ Ajouter une partie personnalisée</button>
+            </div>
+          </div>
+        </div>
+        <div id="atelier5-risques-tab" class="atelier5-subtab-content">
+          <p>Pour chaque risque identifié dans l’atelier 4, indiquez les actions de traitement, le niveau de vraisemblance actuel et le niveau résiduel souhaité. Vous pouvez également importer plusieurs risques à traiter.</p>
+          <div class="subtab-controls">
+            <button id="import-risques-btn" class="import-btn">Importer des risques</button>
+          </div>
+          <div class="table-container">
+            <table id="risques-actions-table" class="data-table">
+              <thead>
+                <tr>
+                  <th>Risque</th>
+                  <th>Vraisemblance</th>
+                  <th>Gravité</th>
+                  <th>Résiduel (Vraisemblance)</th>
+                  <th>Résiduel (Gravité)</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="risques-actions-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <div id="atelier5-plan-tab" class="atelier5-subtab-content">
+          <p>Vue consolidée de toutes les actions définies. Le diagramme de Gantt ci-dessous permet de visualiser les périodes de mise en œuvre.</p>
+          <div class="chart-wrapper">
+            <canvas id="gantt-chart" width="800" height="300" class="chart-canvas"></canvas>
+          </div>
+          <div class="table-container">
+            <table id="plan-actions-table" class="data-table">
+              <thead>
+                <tr>
+                  <th>Action</th>
+                  <th>Source</th>
+                  <th>Description</th>
+                  <th>Responsable</th>
+                  <th>Début</th>
+                  <th>Fin</th>
+                </tr>
+              </thead>
+              <tbody id="plan-actions-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <!-- Modal for importing multiple items (supports, parties) -->
+        <div id="import-modal" class="modal" style="display:none;">
+          <div class="modal-content">
+            <h3 id="import-modal-title">Importer</h3>
+            <input type="text" id="import-search" placeholder="Rechercher..." class="form-input" style="width:100%;margin-bottom:0.5rem;" />
+            <div id="import-list" style="max-height:300px; overflow-y:auto; border:1px solid var(--bg-panel); border-radius:4px; padding:4px;"></div>
+            <div style="margin-top:0.5rem; display:flex; gap:0.5rem;">
+              <button id="import-confirm" class="add-item-btn">Ajouter la sélection</button>
+              <button id="import-cancel" class="header-btn">Fermer</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

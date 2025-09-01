@@ -1,0 +1,1005 @@
+/*
+  Stylesheet for the EBIOS RM offline risk management tool.
+  The palette is inspired by the Atlantis Dark admin template
+  but uses custom variables to remain self‑contained and
+  offline‑friendly.  Adjust the variables below to fine‑tune
+  the look and feel.
+*/
+
+:root {
+  --bg-dark: #0c1524;
+  --bg-light: #12203a;
+  --bg-panel: #1a2a4a;
+  --accent: #4da3ff;
+  --accent-dim: #3c85cc;
+  --text-primary: #e6e9ef;
+  --text-secondary: #8aa0c4;
+  --danger: #e74c3c;
+  --success: #27ae60;
+  --warning: #f39c12;
+  --border-radius: 4px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+}
+
+#app {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Sidebar */
+#sidebar {
+  width: 260px;
+  background-color: var(--bg-light);
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  box-sizing: border-box;
+  border-right: 1px solid #0e1e37;
+  overflow-y: auto;
+}
+
+#sidebar .brand {
+  font-size: 1.4rem;
+  font-weight: bold;
+  margin-bottom: 1.2rem;
+  text-align: center;
+  color: var(--accent);
+}
+
+.analysis-list {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+}
+
+.analysis-item {
+  padding: 0.5rem 0.8rem;
+  margin-bottom: 0.4rem;
+  background-color: var(--bg-panel);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.2s;
+}
+
+.analysis-item.active {
+  background-color: var(--accent-dim);
+}
+
+.analysis-item:hover {
+  background-color: var(--accent-dim);
+}
+
+.analysis-item span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-btn {
+  margin: 0.3rem 0;
+  padding: 0.6rem;
+  width: 100%;
+  background-color: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.sidebar-btn:hover {
+  background-color: var(--accent-dim);
+}
+
+/* Main */
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* Header */
+#header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  background-color: var(--bg-light);
+  border-bottom: 1px solid #0e1e37;
+}
+
+#header input[type="text"] {
+  flex: 1;
+  margin-right: 1rem;
+  padding: 0.6rem 0.8rem;
+  background-color: var(--bg-panel);
+  border: none;
+  color: var(--text-primary);
+  border-radius: var(--border-radius);
+  font-size: 1rem;
+}
+
+#header input[type="text"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.header-buttons {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.header-btn {
+  padding: 0.5rem 0.8rem;
+  background-color: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.header-btn:hover {
+  background-color: var(--accent-dim);
+}
+
+/* Tabs */
+#tabs {
+  display: flex;
+  background-color: var(--bg-light);
+  border-bottom: 1px solid #0e1e37;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 0.8rem;
+  background-color: var(--bg-light);
+  color: var(--text-secondary);
+  border: none;
+  cursor: pointer;
+  text-align: center;
+  transition: background-color 0.2s, color 0.2s;
+  font-size: 0.95rem;
+}
+
+.tab-btn.active {
+  background-color: var(--bg-panel);
+  color: var(--text-primary);
+}
+
+.tab-btn:hover {
+  background-color: var(--bg-panel);
+  color: var(--text-primary);
+}
+
+/* Tab content */
+.tab-content {
+  display: none;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+/* Generic item list */
+.item-list {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.item {
+  background-color: var(--bg-panel);
+  border-radius: var(--border-radius);
+  padding: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  position: relative;
+}
+
+.item .delete-item {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--danger);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+input[type="text"], input[type="number"], textarea {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  background-color: var(--bg-light);
+  border: none;
+  border-radius: var(--border-radius);
+  color: var(--text-primary);
+  resize: vertical;
+}
+
+/* Select fields */
+select {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  background-color: var(--bg-light);
+  border: none;
+  border-radius: var(--border-radius);
+  color: var(--text-primary);
+}
+
+select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+input[type="text"]:focus, input[type="number"]:focus, textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.add-item-btn {
+  background-color: var(--bg-panel);
+  border: 1px dashed var(--accent);
+  color: var(--accent);
+  padding: 0.6rem;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  transition: background-color 0.2s;
+}
+
+.add-item-btn:hover {
+  background-color: var(--bg-light);
+}
+
+/* Charts */
+.chart-canvas {
+  width: 100%;
+  max-width: 700px;
+  margin-top: 1rem;
+  background-color: var(--bg-panel);
+  border-radius: var(--border-radius);
+  padding: 0.5rem;
+}
+
+/* Data tables for values and events */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+
+.data-table th,
+.data-table td {
+  border: 1px solid #0e1e37;
+  padding: 0.4rem 0.6rem;
+  vertical-align: top;
+  font-size: 0.85rem;
+}
+
+.data-table th {
+  background-color: var(--bg-panel);
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.data-table td {
+  background-color: var(--bg-light);
+  color: var(--text-primary);
+}
+
+/* Add visible separators between rows for better readability */
+.data-table tbody tr {
+  border-bottom: 1px solid #0e1e37;
+}
+
+/* ----- Atelier 3: Scénarios stratégiques table customisations ----- */
+/* Widen columns for paths, intermediaries and events to prevent text truncation */
+#strategies-table th:nth-child(3),
+#strategies-table td:nth-child(3),
+#strategies-table th:nth-child(4),
+#strategies-table td:nth-child(4),
+#strategies-table th:nth-child(5),
+#strategies-table td:nth-child(5) {
+  min-width: 240px;
+}
+
+/* Narrower column for gravité */
+#strategies-table th:nth-child(6),
+#strategies-table td:nth-child(6) {
+  min-width: 80px;
+}
+
+/* Allow headers to act as a container for resizer handles */
+.data-table th {
+  position: relative;
+}
+
+/* Resizer handle appended to each header cell (except last).  It
+   appears as a narrow area on the right edge of the column and
+   changes the cursor to indicate that the column can be resized. */
+.col-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* Sub‑tab navigation within Atelier 1 */
+.subtab-nav {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.atelier1-subtab-btn {
+  flex: 1;
+  padding: 0.6rem;
+  background-color: var(--bg-light);
+  color: var(--text-secondary);
+  border: none;
+  cursor: pointer;
+  text-align: center;
+  border-radius: var(--border-radius);
+  transition: background-color 0.2s, color 0.2s;
+  font-size: 0.9rem;
+}
+
+.atelier1-subtab-btn.active {
+  background-color: var(--bg-panel);
+  color: var(--text-primary);
+}
+
+.atelier1-subtab-btn:hover {
+  background-color: var(--bg-panel);
+  color: var(--text-primary);
+}
+
+.atelier1-subtab-content {
+  display: none;
+}
+
+.atelier1-subtab-content.active {
+  display: block;
+}
+
+/* Sub‑tab navigation within Atelier 3 */
+.atelier3-subtab-btn {
+  flex: 1;
+  padding: 0.6rem;
+  background-color: var(--bg-light);
+  color: var(--text-secondary);
+  border: none;
+  cursor: pointer;
+  text-align: center;
+  border-radius: var(--border-radius);
+  transition: background-color 0.2s, color 0.2s;
+  font-size: 0.9rem;
+}
+
+.atelier3-subtab-btn.active {
+  background-color: var(--bg-panel);
+  color: var(--text-primary);
+}
+
+.atelier3-subtab-btn:hover {
+  background-color: var(--bg-panel);
+  color: var(--text-primary);
+}
+
+.atelier3-subtab-content {
+  display: none;
+}
+
+.atelier3-subtab-content.active {
+  display: block;
+}
+
+/* Sub‑tab navigation within Atelier 5 */
+.atelier5-subtab-btn {
+  flex: 1;
+  padding: 0.6rem;
+  background-color: var(--bg-light);
+  color: var(--text-secondary);
+  border: none;
+  cursor: pointer;
+  text-align: center;
+  border-radius: var(--border-radius);
+  transition: background-color 0.2s, color 0.2s;
+  font-size: 0.9rem;
+}
+
+.atelier5-subtab-btn.active {
+  background-color: var(--bg-panel);
+  color: var(--text-primary);
+}
+
+.atelier5-subtab-btn:hover {
+  background-color: var(--bg-panel);
+  color: var(--text-primary);
+}
+
+.atelier5-subtab-content {
+  display: none;
+}
+
+.atelier5-subtab-content.active {
+  display: block;
+}
+
+/* Supports editing within table cells */
+.supports-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* Display each support on a single row with equal‑width fields for
+   name, description and responsable.  This allows all information
+   for a bien support to appear on one line, improving readability
+   when browsing multiple supports. */
+.supports-cell .support-item {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.supports-cell .support-item input[type="text"] {
+  width: 100%;
+}
+
+/* Widen the "Biens supports" column in the missions table so that
+   each support row can display all its fields on a single line
+   without excessive wrapping.  Without a minimum width the
+   automatic column sizing can result in extremely narrow cells
+   when many columns are present. */
+#missions-table th:nth-child(5),
+#missions-table td:nth-child(5) {
+  min-width: 420px;
+}
+
+/* Widen the events column for missions (6th column) */
+#missions-table th:nth-child(6),
+#missions-table td:nth-child(6) {
+  min-width: 420px;
+}
+
+/* Extend description columns in missions and events tables so that
+   long text does not get truncated. */
+#missions-table th:nth-child(3),
+#missions-table td:nth-child(3) {
+  min-width: 300px;
+}
+
+#events-table th:nth-child(2),
+#events-table td:nth-child(2) {
+  min-width: 240px;
+}
+
+#events-table th:nth-child(3),
+#events-table td:nth-child(3) {
+  min-width: 240px;
+}
+
+.supports-cell .support-item button {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.supports-cell .add-support-btn {
+  background: none;
+  border: 1px dashed var(--accent);
+  color: var(--accent);
+  padding: 0.3rem 0.5rem;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 0.8rem;
+  width: fit-content;
+}
+
+.supports-cell .add-support-btn:hover {
+  background-color: var(--bg-light);
+}
+
+/* Events editing within missions */
+.events-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.events-cell .event-item {
+  display: grid;
+  grid-template-columns: 2fr 2fr 0.6fr auto;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.events-cell .event-item textarea {
+  width: 100%;
+}
+
+.events-cell .event-item select {
+  width: 100%;
+}
+
+.events-cell .event-item button {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.events-cell .add-event-btn {
+  background: none;
+  border: 1px dashed var(--accent);
+  color: var(--accent);
+  padding: 0.3rem 0.5rem;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 0.8rem;
+  width: fit-content;
+}
+
+.events-cell .add-event-btn:hover {
+  background-color: var(--bg-light);
+}
+
+/* Layout helper for ateliers: two‑column grid to separate forms and charts */
+.atelier-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-gap: 1rem;
+  align-items: flex-start;
+}
+
+/* Column containing the forms and lists */
+.left {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Chart container styling */
+.chart-wrapper {
+  background-color: var(--bg-panel);
+  border-radius: var(--border-radius);
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+/* Supports list inside missions */
+.supports-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.supports-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.supports-item input[type="text"] {
+  flex: 1;
+}
+
+.supports-item button {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.add-support-btn {
+  background: none;
+  border: 1px dashed var(--accent);
+  color: var(--accent);
+  padding: 0.3rem 0.5rem;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 0.8rem;
+  width: fit-content;
+}
+
+.add-support-btn:hover {
+  background-color: var(--bg-light);
+}
+
+canvas {
+  background-color: transparent;
+}
+
+/* Gap overview container overlays the graph area when GAP Analysis is active. */
+/* Container for the GAP analysis compliance chart.  It sits within
+   the GAP Analysis tab content rather than overlaying the graph area.
+   Use flexbox to arrange the donut and legend horizontally. */
+.gap-overview {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  min-height: 220px;
+  pointer-events: none; /* do not block interactions with underlying elements */
+}
+.gap-overview .donut-chart {
+  position: relative;
+  border-radius: 50%;
+  /* size will be set dynamically in JS */
+  margin-right: 40px;
+}
+.gap-overview .donut-chart::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background-color: var(--bg-panel);
+  /* size of inner hole set in JS */
+}
+.gap-overview .legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+.gap-overview .legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.gap-overview .legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* Adjust atelier grid when gap tab is active to use full width */
+.atelier-grid.gap-active {
+  grid-template-columns: 1fr;
+}
+
+/* When the cartography tab is active in Atelier 3, collapse the grid
+   to a single column so that the chart appears below the table rather
+   than beside it.  This class is toggled via JavaScript. */
+.atelier-grid.carto-active {
+  grid-template-columns: 1fr;
+}
+
+/* Association cell styling for cartography (supports and valeurs).  Each
+   selected item is displayed as a small tag with a remove button and
+   the items wrap onto multiple lines if necessary.  A plus button
+   allows adding more associations. */
+.assoc-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.assoc-item {
+  background-color: var(--bg-panel);
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--border-radius);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+}
+
+.assoc-item button {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0;
+}
+
+.add-assoc-btn {
+  background: none;
+  border: 1px dashed var(--accent);
+  color: var(--accent);
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+.add-assoc-btn:hover {
+  background-color: var(--bg-light);
+}
+
+/* ----- Risk modal styling (Atelier 4) ----- */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-content {
+  background: var(--bg-panel);
+  padding: 1rem;
+  border-radius: var(--border-radius);
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.modal-content h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+.risk-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+}
+.risk-list li {
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+.risk-list li:last-child {
+  border-bottom: none;
+}
+.risk-list li:hover {
+  background-color: var(--bg-light);
+}
+
+/* Highlight selected risks in the modal */
+.risk-list li.selected {
+  background-color: var(--accent-dark);
+  color: #ffffff;
+}
+
+/* ----- Import modal list styling (Atelier 5) ----- */
+.import-item {
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+.import-item:last-child {
+  border-bottom: none;
+}
+.import-item:hover {
+  background-color: var(--bg-light);
+}
+.import-item.selected {
+  background-color: var(--accent-dark);
+  color: #ffffff;
+}
+.import-desc {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+/* Buttons in subtab controls */
+.subtab-controls {
+  margin: 0.5rem 0;
+  display: flex;
+  gap: 0.5rem;
+}
+.import-btn {
+  background: var(--accent);
+  border: none;
+  color: #ffffff;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.import-btn:hover {
+  background: var(--accent-dark);
+}
+
+/* Risk description styling within modal list */
+.risk-desc {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 0.1rem;
+}
+
+/* Nested action tables inside atelier 5 */
+.nested-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+}
+.nested-table th,
+.nested-table td {
+  border: 1px solid var(--border-color);
+  padding: 4px;
+  vertical-align: top;
+}
+.nested-table th {
+  background-color: var(--bg-light);
+  color: var(--text-primary);
+  font-weight: bold;
+}
+.nested-table input,
+.nested-table textarea {
+  width: 100%;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 2px;
+  font-size: 0.8rem;
+}
+.nested-table .delete-action {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+/* ----- Atelier 2 (SROV) table customisations ----- */
+/* Widen key columns for better readability */
+#srov-table th:nth-child(1),
+#srov-table td:nth-child(1) {
+  min-width: 200px;
+}
+#srov-table th:nth-child(2),
+#srov-table td:nth-child(2) {
+  min-width: 200px;
+}
+#srov-table th:nth-child(8),
+#srov-table td:nth-child(8) {
+  min-width: 240px;
+}
+#srov-table th:nth-child(9),
+#srov-table td:nth-child(9) {
+  min-width: 80px;
+}
+
+/* Widen the Motivation and Ressources columns so that option labels
+   such as “Très peu motivée” or “Ressources illimitées” are not
+   truncated.  Without a minimum width the select element shrinks to
+   the available space and the text becomes unreadable. */
+#srov-table th:nth-child(3),
+#srov-table td:nth-child(3),
+#srov-table th:nth-child(4),
+#srov-table td:nth-child(4) {
+  /* Provide extra width so the full select labels remain visible,
+     preventing truncation (e.g., « Ressources importantes »). */
+  min-width: 240px;
+}
+
+/* Slightly widen the Pertinence column to display both the numeric
+   product (motivation × ressources) and its bucket level without
+   wrapping. */
+#srov-table th:nth-child(5),
+#srov-table td:nth-child(5) {
+  min-width: 160px;
+}
+
+/* Align the retention checkbox and center its cell */
+#srov-table td:nth-child(7) {
+  text-align: center;
+}
+
+/* Ensure selects and textareas fill their cells */
+#srov-table select,
+#srov-table textarea,
+#srov-table input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ----- Atelier 4 (scénarios opérationnels) table customisations ----- */
+/* Widen key columns for readability.  Columns are:
+   1: Évènement redouté,
+   2: Chemin stratégique,
+   3-6: Kill chain phases (Connaître, Rester, Trouver, Exploiter),
+   7: Risques,
+   8: Vraisemblance,
+   9: Gravité.
+   The last column (Actions) is not explicitly sized. */
+#ops-table th:nth-child(1),
+#ops-table td:nth-child(1) {
+  min-width: 200px;
+}
+#ops-table th:nth-child(2),
+#ops-table td:nth-child(2) {
+  min-width: 200px;
+}
+#ops-table th:nth-child(3),
+#ops-table td:nth-child(3),
+#ops-table th:nth-child(4),
+#ops-table td:nth-child(4),
+#ops-table th:nth-child(5),
+#ops-table td:nth-child(5),
+#ops-table th:nth-child(6),
+#ops-table td:nth-child(6) {
+  min-width: 180px;
+}
+#ops-table th:nth-child(7),
+#ops-table td:nth-child(7) {
+  min-width: 200px;
+}
+#ops-table th:nth-child(8),
+#ops-table td:nth-child(8),
+#ops-table th:nth-child(9),
+#ops-table td:nth-child(9) {
+  min-width: 80px;
+  text-align: center;
+}
+
+/* Hide kill chain columns (3-6) when the table has the class hide-killchain */
+#ops-table.hide-killchain th:nth-child(3),
+#ops-table.hide-killchain td:nth-child(3),
+#ops-table.hide-killchain th:nth-child(4),
+#ops-table.hide-killchain td:nth-child(4),
+#ops-table.hide-killchain th:nth-child(5),
+#ops-table.hide-killchain td:nth-child(5),
+#ops-table.hide-killchain th:nth-child(6),
+#ops-table.hide-killchain td:nth-child(6) {
+  display: none;
+}
+
+/* Make selects fill their cells in the operational scenarios table */
+#ops-table select {
+  width: 100%;
+  box-sizing: border-box;
+}

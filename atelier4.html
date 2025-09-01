@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EBIOS Risk Manager – Atelier 4</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Shared sidebar for analysis selection and import/export controls -->
+    <aside id="sidebar">
+      <div class="brand">EBIOS RM</div>
+      <div id="analysis-list" class="analysis-list"></div>
+      <button id="new-analysis-btn" class="sidebar-btn">+ Nouvelle analyse</button>
+      <button id="export-all-btn" class="sidebar-btn">Exporter tout</button>
+      <button id="import-btn" class="sidebar-btn">Importer JSON</button>
+      <input type="file" id="import-file" accept="application/json" style="display:none" />
+    </aside>
+    <main id="main">
+      <!-- Header with analysis title and actions -->
+      <header id="header">
+        <input id="analysis-title" type="text" placeholder="Titre de l'analyse" />
+        <div class="header-buttons">
+          <button id="export-btn" class="header-btn">Exporter</button>
+          <button id="delete-btn" class="header-btn">Supprimer</button>
+        </div>
+      </header>
+      <!-- Navigation between ateliers -->
+      <nav id="tabs">
+        <a href="atelier1.html" class="tab-btn">Atelier 1</a>
+        <a href="atelier2.html" class="tab-btn">Atelier 2</a>
+        <a href="atelier3.html" class="tab-btn">Atelier 3</a>
+        <a href="atelier4.html" class="tab-btn active">Atelier 4</a>
+        <a href="atelier5.html" class="tab-btn">Atelier 5</a>
+      </nav>
+      <!-- Atelier 4: Scénarios opérationnels -->
+      <section id="atelier4" class="tab-content active">
+        <div class="atelier-grid">
+          <div class="left">
+            <h2>Atelier 4 – Scénarios opérationnels</h2>
+            <p>Pour chaque scénario opérationnel, reliez un <strong>évènement redouté</strong> à un <strong>chemin d’attaque stratégique</strong> issu de l’atelier 3, puis décrivez les étapes de la cyber kill chain (Connaître, Rester, Trouver, Exploiter). Vous pouvez associer un ou plusieurs risques à chaque scénario et préciser pour chacun la vraisemblance et la gravité (échelle 1 à 4).</p>
+            <!-- Button and hidden file input to import a MITRE ATT&CK CSV file -->
+            <div style="margin:0.8rem 0;">
+              <button id="import-mitre-btn" class="add-item-btn">Importer base MITRE (CSV)</button>
+              <input type="file" id="mitre-file-input" accept=".csv" style="display:none" />
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem;">
+              <div class="table-container" style="overflow-x:auto; flex:1;">
+              <table id="ops-table" class="data-table" style="min-width:100%;">
+                <thead>
+                  <tr>
+                    <th>Évènement</th>
+                    <th>Chemin stratégique</th>
+                    <th>Connaître</th>
+                    <th>Rester</th>
+                    <th>Trouver</th>
+                    <th>Exploiter</th>
+                    <th>Risques</th>
+                    <th>Vraisemblance</th>
+                    <th>Gravité</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="ops-body"></tbody>
+              </table>
+              </div>
+              <div style="margin-left:0.5rem;">
+                <button id="toggle-killchain-btn" class="add-item-btn" style="white-space:nowrap;">Masquer Kill Chain</button>
+              </div>
+            </div>
+            <button id="add-op-btn" class="add-item-btn">+ Ajouter un scénario opérationnel</button>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="atelier4-chart" width="600" height="400" class="chart-canvas"></canvas>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="app.js"></script>
+  <!-- Modal for selecting a risk from MITRE/OWASP library or adding manually -->
+  <div id="risk-modal" class="modal" style="display:none">
+    <div class="modal-content">
+      <h3>Ajouter un risque (MITRE / OWASP)</h3>
+      <input id="risk-search" type="text" placeholder="Rechercher..." style="width:100%; margin-bottom:0.5rem;" />
+      <ul id="risk-list" class="risk-list"></ul>
+      <div style="margin-top:0.6rem;">
+        <input id="risk-manual" type="text" placeholder="Nom du risque personnalisé" style="width:100%; margin-bottom:0.4rem;" />
+        <button id="risk-add-manual" class="add-item-btn" style="width:100%">Ajouter ce risque</button>
+      </div>
+      <div style="margin-top:0.6rem; display:flex; gap:0.5rem;">
+        <button id="risk-select-apply" class="add-item-btn" style="flex:1;">Ajouter la sélection</button>
+        <button id="risk-close-btn" class="header-btn" style="flex:1;">Fermer</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

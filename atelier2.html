@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EBIOS Risk Manager – Atelier 2</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Sidebar remains shared across pages -->
+    <aside id="sidebar">
+      <div class="brand">EBIOS RM</div>
+      <div id="analysis-list" class="analysis-list"></div>
+      <button id="new-analysis-btn" class="sidebar-btn">+ Nouvelle analyse</button>
+      <button id="export-all-btn" class="sidebar-btn">Exporter tout</button>
+      <button id="import-btn" class="sidebar-btn">Importer JSON</button>
+      <input type="file" id="import-file" accept="application/json" style="display:none" />
+    </aside>
+    <main id="main">
+      <!-- Analysis title and controls -->
+      <header id="header">
+        <input id="analysis-title" type="text" placeholder="Titre de l'analyse" />
+        <div class="header-buttons">
+          <button id="export-btn" class="header-btn">Exporter</button>
+          <button id="delete-btn" class="header-btn">Supprimer</button>
+        </div>
+      </header>
+      <!-- Navigation between atelier pages -->
+      <nav id="tabs">
+        <a href="atelier1.html" class="tab-btn">Atelier 1</a>
+        <a href="atelier2.html" class="tab-btn active">Atelier 2</a>
+        <a href="atelier3.html" class="tab-btn">Atelier 3</a>
+        <a href="atelier4.html" class="tab-btn">Atelier 4</a>
+        <a href="atelier5.html" class="tab-btn">Atelier 5</a>
+      </nav>
+      <!-- Atelier 2 content: SROV table and graph -->
+      <section id="atelier2" class="tab-content active">
+        <div class="atelier-grid">
+          <div class="left">
+            <h2>Atelier 2 – Sources et objectifs</h2>
+            <p>Définissez les couples source de risque / objectif visé. Pour chaque couple, précisez la motivation et les ressources de la source (valeurs de 1 à 4), la priorité de l’objectif (1 à 4), si le couple est retenu et la justification de l’exclusion le cas échéant. La pertinence est calculée automatiquement (motivation × ressources) et colorée selon son niveau.</p>
+            <div class="table-container" style="overflow-x:auto; margin-bottom:1rem;">
+              <table id="srov-table" class="data-table" style="min-width:100%;">
+                <thead>
+                  <tr>
+                    <th>Source de risque</th>
+                    <th>Objectif visé</th>
+                    <th>Motivation</th>
+                    <th>Ressources</th>
+                    <th>Pertinence</th>
+                    <th>Priorité</th>
+                    <th>Retenue</th>
+                    <th>Justification</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="srov-body"></tbody>
+              </table>
+            </div>
+            <button id="add-srov-btn" class="add-item-btn">+ Ajouter un couple</button>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="atelier2-chart" width="600" height="400" class="chart-canvas"></canvas>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

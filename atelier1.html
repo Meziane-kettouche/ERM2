@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EBIOS Risk Manager – Atelier 1</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Sidebar for analysis selection and import/export controls -->
+    <aside id="sidebar">
+      <div class="brand">EBIOS RM</div>
+      <div id="analysis-list" class="analysis-list"></div>
+      <button id="new-analysis-btn" class="sidebar-btn">+ Nouvelle analyse</button>
+      <button id="export-all-btn" class="sidebar-btn">Exporter tout</button>
+      <button id="import-btn" class="sidebar-btn">Importer JSON</button>
+      <input type="file" id="import-file" accept="application/json" style="display:none" />
+    </aside>
+    <!-- Main content area -->
+    <main id="main">
+      <!-- Header with current analysis title and export/delete controls -->
+      <header id="header">
+        <input id="analysis-title" type="text" placeholder="Titre de l'analyse" />
+        <div class="header-buttons">
+          <button id="export-btn" class="header-btn">Exporter</button>
+          <button id="delete-btn" class="header-btn">Supprimer</button>
+        </div>
+      </header>
+      <!-- Navigation between ateliers (multi‑page version) -->
+      <nav id="tabs">
+        <a href="atelier1.html" class="tab-btn active">Atelier 1</a>
+        <a href="atelier2.html" class="tab-btn">Atelier 2</a>
+        <a href="atelier3.html" class="tab-btn">Atelier 3</a>
+        <a href="atelier4.html" class="tab-btn">Atelier 4</a>
+        <a href="atelier5.html" class="tab-btn">Atelier 5</a>
+      </nav>
+      <!-- Atelier 1 : Mission et valeurs et GAP Analysis -->
+      <section id="atelier1" class="tab-content active">
+        <h2>Atelier 1 – Mission et valeurs</h2>
+        <!-- Sub‑tab navigation: mission/valeurs vs GAP analysis -->
+        <div class="subtab-nav" id="atelier1-subtabs">
+          <button class="atelier1-subtab-btn active" data-subtab="values">Mission & Valeurs</button>
+          <button class="atelier1-subtab-btn" data-subtab="gap">GAP Analysis</button>
+        </div>
+        <!-- Graph area: network graph for mission/valeurs will appear here.  The
+             GAP analysis diagram is drawn dynamically in the GAP tab. -->
+        <div class="chart-wrapper" style="margin-bottom:1rem; position: relative;">
+          <div id="atelier1-graph" style="width:100%;height:660px;"></div>
+        </div>
+        <!-- Grid layout for mission description, values/supports and gap analysis -->
+        <div class="atelier-grid">
+          <div class="left">
+            <!-- Sub‑tab: mission description and values/supports -->
+            <div id="atelier1-values-tab" class="atelier1-subtab-content active">
+              <h2>Description de la mission du système</h2>
+              <p>Saisissez la mission globale du système analysé.</p>
+              <textarea id="mission-description" rows="3" placeholder="Décrire la mission du système…"></textarea>
+              <h2>Valeurs métier et biens supports</h2>
+              <p>Chaque valeur métier comporte une dénomination, une nature (information, processus, fonction), une description, un responsable et des biens supports associés (nom, description, responsable). Chaque valeur peut également comporter un ou plusieurs évènements redoutés avec niveau et description des impacts.</p>
+              <table id="missions-table" class="data-table">
+                <thead>
+                  <tr>
+                    <th>Dénomination</th>
+                    <th>Nature</th>
+                    <th>Description</th>
+                    <th>Responsable</th>
+                    <th>Biens supports</th>
+                    <th>Évènements redoutés</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="missions-body"></tbody>
+              </table>
+              <button id="add-mission-btn" class="add-item-btn">+ Ajouter une valeur</button>
+            </div>
+            <!-- Sub‑tab: GAP analysis -->
+            <div id="atelier1-gap-tab" class="atelier1-subtab-content">
+              <h2>GAP Analysis</h2>
+              <!-- Circular compliance diagram will be drawn here via updateGapChart() -->
+              <div id="gap-overview-chart" class="gap-overview" style="display:none; margin-bottom:1rem;"></div>
+              <p>Importez ou saisissez les exigences à vérifier : domaine, titre, description, état d'application et justification. Le diagramme circulaire de conformité est affiché en haut de cette page.</p>
+              <div style="margin-bottom:0.5rem;">
+                <button id="import-gap-btn" class="add-item-btn">Importer exigences (JSON)</button>
+                <input type="file" id="gap-import-file" accept="application/json" style="display:none">
+              </div>
+              <div class="table-container" style="overflow-x:auto;">
+                <table id="gap-table" class="data-table" style="min-width:100%;">
+                  <thead>
+                    <tr>
+                      <th>Domaine</th>
+                      <th>Titre</th>
+                      <th>Description</th>
+                      <th>Application</th>
+                      <th>Justification</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="gap-body"></tbody>
+                </table>
+              </div>
+              <button id="add-gap-btn" class="add-item-btn">+ Ajouter une exigence</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
