@@ -44,16 +44,13 @@
         <div id="atelier5-subtabs" class="subtab-nav">
           <button class="atelier5-subtab-btn active" data-subtab="gap">Actions GAP</button>
           <button class="atelier5-subtab-btn" data-subtab="supports">Actions supports</button>
-          <button class="atelier5-subtab-btn" data-subtab="parties">Actions parties</button>
+          <button class="atelier5-subtab-btn" data-subtab="parties">Actions PP (Parties Prenantes)</button>
           <button class="atelier5-subtab-btn" data-subtab="risques">Actions risques</button>
           <button class="atelier5-subtab-btn" data-subtab="plan">Plan d'action</button>
         </div>
         <!-- Subtab content containers -->
         <div id="atelier5-gap-tab" class="atelier5-subtab-content active">
-          <p>Liste des exigences de conformité issues du GAP Analysis (non appliquées ou partiellement appliquées). Vous pouvez ajouter une ou plusieurs actions pour chaque exigence ou importer plusieurs exigences à traiter.</p>
-          <div class="subtab-controls">
-            <button id="import-gap-actions-btn" class="import-btn">Importer des exigences</button>
-          </div>
+          <p>Liste des exigences de conformité issues du GAP Analysis (non appliquées ou partiellement appliquées). Vous pouvez ajouter une ou plusieurs actions pour chaque exigence.</p>
           <div class="table-container">
             <table id="gap-actions-table" class="data-table">
               <thead>
@@ -101,16 +98,12 @@
               <tbody id="parties-actions-body"></tbody>
             </table>
             <div class="subtab-controls">
-              <button id="import-parties-btn" class="import-btn">Importer des parties</button>
               <button id="add-partie-action-row" class="add-item-btn">+ Ajouter une partie personnalisée</button>
             </div>
           </div>
         </div>
         <div id="atelier5-risques-tab" class="atelier5-subtab-content">
-          <p>Pour chaque risque identifié dans l’atelier 4, indiquez les actions de traitement, le niveau de vraisemblance actuel et le niveau résiduel souhaité. Vous pouvez également importer plusieurs risques à traiter.</p>
-          <div class="subtab-controls">
-            <button id="import-risques-btn" class="import-btn">Importer des risques</button>
-          </div>
+          <p>Pour chaque risque identifié dans l’atelier 4, indiquez les actions de traitement, le niveau de vraisemblance actuel et le niveau résiduel souhaité.</p>
           <div class="table-container">
             <table id="risques-actions-table" class="data-table">
               <thead>
@@ -151,7 +144,7 @@
             </table>
           </div>
         </div>
-        <!-- Modal for importing multiple items (supports, parties) -->
+        <!-- Modal for importing multiple items -->
         <div id="import-modal" class="modal" style="display:none;">
           <div class="modal-content">
             <h3 id="import-modal-title">Importer</h3>

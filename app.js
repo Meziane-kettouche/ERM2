@@ -1131,14 +1131,6 @@
   let importSelections = new Set();
 
   function setupActionImport() {
-    const btnGap = document.getElementById('import-gap-actions-btn');
-    if (btnGap) btnGap.addEventListener('click', () => openImportModal('gap'));
-    const btnSup = document.getElementById('import-supports-btn');
-    if (btnSup) btnSup.addEventListener('click', () => openImportModal('supports'));
-    const btnParties = document.getElementById('import-parties-btn');
-    if (btnParties) btnParties.addEventListener('click', () => openImportModal('parties'));
-    const btnRisques = document.getElementById('import-risques-btn');
-    if (btnRisques) btnRisques.addEventListener('click', () => openImportModal('risques'));
     const confirmBtn = document.getElementById('import-confirm');
     if (confirmBtn) confirmBtn.addEventListener('click', () => applyImportSelection());
     const cancelBtn = document.getElementById('import-cancel');
