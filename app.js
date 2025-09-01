@@ -24,6 +24,20 @@
     localStorage.setItem('ebiosAnalyses', JSON.stringify(analyses));
   }
 
+  // Persist the ID of the currently selected analysis in localStorage so
+  // that navigating between separate workshop pages restores the same
+  // analysis automatically.
+  function persistCurrentAnalysisId() {
+    try {
+      const sel = analyses[currentIndex];
+      if (sel && sel.id) {
+        localStorage.setItem('ebiosCurrentAnalysisId', sel.id);
+      }
+    } catch (e) {
+      // Ignore storage errors (e.g., private browsing)
+    }
+  }
+
   // ----- Utility: generate a simple UID
   function uid() {
     return 'id-' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
@@ -56,17 +70,9 @@
 
   function selectAnalysis(index) {
     currentIndex = index;
-    // Persist the selected analysis ID so that navigation between pages
-    // retains the current analysis.  On load, init() will restore
-    // this selection based on the stored ID.
-    try {
-      const sel = analyses[index];
-      if (sel && sel.id) {
-        localStorage.setItem('ebiosCurrentAnalysisId', sel.id);
-      }
-    } catch (e) {
-      // ignore storage errors
-    }
+    // Persist selection so that changing workshops does not require the
+    // user to pick the analysis again.
+    persistCurrentAnalysisId();
     renderAnalysisList();
     const analysis = analyses[currentIndex];
     if (!analysis) return;
@@ -4745,12 +4751,7 @@
     tabs.forEach(btn => {
       // Anchors navigate to other pages; store current analysis before leaving
       if (btn.tagName && btn.tagName.toLowerCase() === 'a' && btn.hasAttribute('href')) {
-        btn.addEventListener('click', () => {
-          const cur = analyses[currentIndex];
-          if (cur && cur.id) {
-            try { localStorage.setItem('ebiosCurrentAnalysisId', cur.id); } catch (e) {}
-          }
-        });
+        btn.addEventListener('click', persistCurrentAnalysisId);
         return;
       }
       btn.addEventListener('click', () => {
@@ -4980,6 +4981,9 @@
     setupMitreImport();
     setupKillChainToggle();
       setupActionImport();
+    // Ensure the current analysis ID is saved even if the user reloads or
+    // closes the page without navigating through the provided links.
+    window.addEventListener('beforeunload', persistCurrentAnalysisId);
     // Select the previously selected analysis or the first one by default
     if (analyses.length > 0) {
       currentIndex = savedIndex >= 0 ? savedIndex : 0;
