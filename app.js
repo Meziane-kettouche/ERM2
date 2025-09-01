@@ -14,6 +14,19 @@
     try {
       const data = localStorage.getItem('ebiosAnalyses');
       analyses = data ? JSON.parse(data) : [];
+      // Ensure every analysis has a stable identifier for persistence.
+      // Older saved analyses may lack an `id` field, so assign one when
+      // loading and immediately save back to storage so future loads keep it.
+      let changed = false;
+      analyses.forEach(a => {
+        if (a && !a.id) {
+          a.id = uid();
+          changed = true;
+        }
+      });
+      if (changed) {
+        saveAnalyses();
+      }
     } catch (e) {
       console.warn('Failed to parse localStorage data, resetting.', e);
       analyses = [];
