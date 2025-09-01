@@ -18,9 +18,12 @@
       <input type="file" id="import-file" accept="application/json" style="display:none" />
     </aside>
     <main id="main">
-      <!-- Header with analysis title and actions -->
+      <!-- Header with analysis title, sidebar toggle and actions -->
       <header id="header">
-        <input id="analysis-title" type="text" placeholder="Titre de l'analyse" />
+        <div class="header-left">
+          <button id="sidebar-toggle" class="header-btn">☰</button>
+          <input id="analysis-title" type="text" placeholder="Titre de l'analyse" />
+        </div>
         <div class="header-buttons">
           <button id="export-btn" class="header-btn">Exporter</button>
           <button id="delete-btn" class="header-btn">Supprimer</button>

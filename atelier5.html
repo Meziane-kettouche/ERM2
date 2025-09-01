@@ -18,9 +18,12 @@
       <input type="file" id="import-file" accept="application/json" style="display:none" />
     </aside>
     <main id="main">
-      <!-- Header with analysis title and export/delete buttons -->
+      <!-- Header with analysis title, sidebar toggle and export/delete buttons -->
       <header id="header">
-        <input id="analysis-title" type="text" placeholder="Titre de l'analyse" />
+        <div class="header-left">
+          <button id="sidebar-toggle" class="header-btn">☰</button>
+          <input id="analysis-title" type="text" placeholder="Titre de l'analyse" />
+        </div>
         <div class="header-buttons">
           <button id="export-btn" class="header-btn">Exporter</button>
           <button id="delete-btn" class="header-btn">Supprimer</button>
@@ -61,6 +64,9 @@
               </thead>
               <tbody id="gap-actions-body"></tbody>
             </table>
+          </div>
+          <div class="subtab-controls">
+            <button id="add-gap-action-row" class="add-item-btn">+ Ajouter une exigence personnalisée</button>
           </div>
         </div>
         <div id="atelier5-supports-tab" class="atelier5-subtab-content">
@@ -119,6 +125,9 @@
               </thead>
               <tbody id="risques-actions-body"></tbody>
             </table>
+          </div>
+          <div class="subtab-controls">
+            <button id="add-risque-action-row" class="add-item-btn">+ Ajouter un risque personnalisé</button>
           </div>
         </div>
         <div id="atelier5-plan-tab" class="atelier5-subtab-content">

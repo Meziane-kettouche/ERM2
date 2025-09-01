@@ -19,9 +19,12 @@
     </aside>
     <!-- Main content area -->
     <main id="main">
-      <!-- Header with current analysis title and export/delete controls -->
+      <!-- Header with current analysis title, sidebar toggle and export/delete controls -->
       <header id="header">
-        <input id="analysis-title" type="text" placeholder="Titre de l'analyse" />
+        <div class="header-left">
+          <button id="sidebar-toggle" class="header-btn">☰</button>
+          <input id="analysis-title" type="text" placeholder="Titre de l'analyse" />
+        </div>
         <div class="header-buttons">
           <button id="export-btn" class="header-btn">Exporter</button>
           <button id="delete-btn" class="header-btn">Supprimer</button>

@@ -3264,7 +3264,18 @@
       const tr = document.createElement('tr');
       // Exigence cell
       const tdName = document.createElement('td');
-      tdName.textContent = req.titre || req.domaine || 'Exigence';
+      if (req.custom) {
+        const inpReq = document.createElement('input');
+        inpReq.value = req.titre || '';
+        inpReq.addEventListener('input', (e) => {
+          req.titre = e.target.value;
+          saveAnalyses();
+          renderGapActions();
+        });
+        tdName.appendChild(inpReq);
+      } else {
+        tdName.textContent = req.titre || req.domaine || 'Exigence';
+      }
       tr.appendChild(tdName);
       // Actions cell
       const tdActions = document.createElement('td');
@@ -3702,23 +3713,36 @@
       });
     });
     let risks = Array.from(riskMap.values());
-    // Include any risks already present in actionsRisques that are not in riskMap (e.g., imported manually)
+    // Include any risks already present in actionsRisques that are not in riskMap (e.g., imported or added manually)
     (analysis.data.actionsRisques || []).forEach(row => {
       if (!riskMap.has(row.riskName)) {
-        risks.push({ name: row.riskName, vraisemblance: row.residualV || 1, gravite: row.residualG || 1 });
+        risks.push({ name: row.riskName, vraisemblance: row.residualV || 1, gravite: row.residualG || 1, manual: row.manual });
       }
     });
     risks.forEach(risk => {
       // Find entry in actionsRisques
       let row = analysis.data.actionsRisques.find(r => r.riskName === risk.name);
       if (!row) {
-        row = { riskName: risk.name, residualV: risk.vraisemblance, residualG: risk.gravite, actions: [] };
+        row = { riskName: risk.name, residualV: risk.vraisemblance, residualG: risk.gravite, actions: [], manual: risk.manual };
         analysis.data.actionsRisques.push(row);
+      } else if (risk.manual) {
+        row.manual = true;
       }
       const tr = document.createElement('tr');
       // Risk name
       const tdName = document.createElement('td');
-      tdName.textContent = risk.name;
+      if (row.manual) {
+        const inpRisk = document.createElement('input');
+        inpRisk.value = row.riskName || '';
+        inpRisk.addEventListener('input', (e) => {
+          row.riskName = e.target.value;
+          saveAnalyses();
+          renderRisquesActions();
+        });
+        tdName.appendChild(inpRisk);
+      } else {
+        tdName.textContent = risk.name;
+      }
       tr.appendChild(tdName);
       // Current vraisemblance
       const tdVr = document.createElement('td');
@@ -4511,6 +4535,22 @@
       });
     }
 
+    // Atelier 5: add a new GAP requirement row
+    const addGapRow = document.getElementById('add-gap-action-row');
+    if (addGapRow) {
+      addGapRow.addEventListener('click', () => {
+        const analysis = analyses[currentIndex];
+        if (!analysis.data) analysis.data = {};
+        if (!Array.isArray(analysis.data.gap)) analysis.data.gap = [];
+        const req = { id: uid(), titre: '', application: '', custom: true };
+        analysis.data.gap.push(req);
+        if (!Array.isArray(analysis.data.actionsGap)) analysis.data.actionsGap = [];
+        analysis.data.actionsGap.push({ sourceId: req.id, actions: [] });
+        saveAnalyses();
+        renderGapActions();
+      });
+    }
+
     // Atelier 5: add a new support action row
     const addSupportRow = document.getElementById('add-support-action-row');
     if (addSupportRow) {
@@ -4533,6 +4573,19 @@
         analysis.data.actionsParties.push({ ppId: '', actions: [] });
         saveAnalyses();
         renderPartiesActions();
+      });
+    }
+
+    // Atelier 5: add a new risk action row
+    const addRiskRow = document.getElementById('add-risque-action-row');
+    if (addRiskRow) {
+      addRiskRow.addEventListener('click', () => {
+        const analysis = analyses[currentIndex];
+        if (!analysis.data) analysis.data = {};
+        if (!Array.isArray(analysis.data.actionsRisques)) analysis.data.actionsRisques = [];
+        analysis.data.actionsRisques.push({ riskName: '', residualV: 1, residualG: 1, actions: [], manual: true });
+        saveAnalyses();
+        renderRisquesActions();
       });
     }
     document.getElementById('add-pp-btn').addEventListener('click', () => {
@@ -4638,8 +4691,14 @@
     // **not** have an href attribute.
     const tabs = document.querySelectorAll('.tab-btn');
     tabs.forEach(btn => {
-      // Skip anchors that have an href (page navigation)
+      // Anchors navigate to other pages; store current analysis before leaving
       if (btn.tagName && btn.tagName.toLowerCase() === 'a' && btn.hasAttribute('href')) {
+        btn.addEventListener('click', () => {
+          const cur = analyses[currentIndex];
+          if (cur && cur.id) {
+            try { localStorage.setItem('ebiosCurrentAnalysisId', cur.id); } catch (e) {}
+          }
+        });
         return;
       }
       btn.addEventListener('click', () => {
@@ -4711,6 +4770,15 @@
           }
         }
       });
+    });
+  }
+
+  function setupSidebarToggle() {
+    const btn = document.getElementById('sidebar-toggle');
+    if (!btn) return;
+    const sidebar = document.getElementById('sidebar');
+    btn.addEventListener('click', () => {
+      sidebar.classList.toggle('collapsed');
     });
   }
 
@@ -4855,6 +4923,7 @@
     renderAnalysisList();
     setupAnalysisControls();
     setupNavigation();
+    setupSidebarToggle();
     setupAddButtons();
     setupMitreImport();
     setupKillChainToggle();
