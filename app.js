@@ -3293,50 +3293,28 @@
     const analysis = analyses[currentIndex];
     if (!analysis || !analysis.data) return;
     const gap = analysis.data.gap || [];
-    // Ensure actions array exists
     if (!Array.isArray(analysis.data.actionsGap)) analysis.data.actionsGap = [];
-    // Filter gap requirements by application
-    const targets = gap.filter(req => {
-      // Keep requirements that are not fully applied.  Normalize the string
-      // to remove accents and compare in lower case.  Consider any status
-      // that does not start with "appliqu" as non/partially applied.
-      let app = (req.application || '').toLowerCase();
-      try {
-        app = app.normalize('NFD').replace(/\p{Diacritic}/gu, '');
-      } catch (e) {}
-      app = app.trim();
-      // Remove spaces and hyphens
-      const prefix = app.replace(/\s+/g, '');
-      return !(prefix.startsWith('applique'));
-    });
-    targets.forEach(req => {
-      if (!req.id) req.id = uid();
+    analysis.data.actionsGap.forEach(entry => {
+      if (!entry) return;
       const tr = document.createElement('tr');
-      // Exigence cell
+      const req = gap.find(r => r.id === entry.sourceId);
       const tdName = document.createElement('td');
-      if (req.custom) {
+      if (req) {
+        tdName.textContent = req.titre || req.domaine || 'Exigence';
+      } else {
         const inpReq = document.createElement('input');
-        inpReq.value = req.titre || '';
+        inpReq.value = entry.customTitre || '';
         inpReq.addEventListener('input', (e) => {
-          req.titre = e.target.value;
+          entry.customTitre = e.target.value;
           saveAnalyses();
           renderGapActions();
         });
         tdName.appendChild(inpReq);
-      } else {
-        tdName.textContent = req.titre || req.domaine || 'Exigence';
       }
       tr.appendChild(tdName);
-      // Actions cell
       const tdActions = document.createElement('td');
       tdActions.className = 'assoc-cell';
-      // Find entry in actionsGap by sourceId
-      let entry = analysis.data.actionsGap.find(it => it.sourceId === req.id);
-      if (!entry) {
-        entry = { sourceId: req.id, actions: [] };
-        analysis.data.actionsGap.push(entry);
-      }
-      // Render actions in a nested table
+      if (!Array.isArray(entry.actions)) entry.actions = [];
       const actTable = document.createElement('table');
       actTable.className = 'nested-table';
       const headerRow = document.createElement('tr');
@@ -3344,7 +3322,6 @@
       actTable.appendChild(headerRow);
       entry.actions.forEach((act, aIdx) => {
         const ar = document.createElement('tr');
-        // Name
         let tdA = document.createElement('td');
         const inpName = document.createElement('input');
         inpName.value = act.name || '';
@@ -3355,7 +3332,6 @@
         });
         tdA.appendChild(inpName);
         ar.appendChild(tdA);
-        // Description
         tdA = document.createElement('td');
         const inpDesc = document.createElement('textarea');
         inpDesc.value = act.description || '';
@@ -3367,7 +3343,6 @@
         });
         tdA.appendChild(inpDesc);
         ar.appendChild(tdA);
-        // Responsable
         tdA = document.createElement('td');
         const inpResp = document.createElement('input');
         inpResp.value = act.responsable || '';
@@ -3378,7 +3353,6 @@
         });
         tdA.appendChild(inpResp);
         ar.appendChild(tdA);
-        // Start
         tdA = document.createElement('td');
         const inpStart = document.createElement('input');
         inpStart.type = 'date';
@@ -3390,7 +3364,6 @@
         });
         tdA.appendChild(inpStart);
         ar.appendChild(tdA);
-        // End
         tdA = document.createElement('td');
         const inpEnd = document.createElement('input');
         inpEnd.type = 'date';
@@ -3402,7 +3375,6 @@
         });
         tdA.appendChild(inpEnd);
         ar.appendChild(tdA);
-        // Delete button
         tdA = document.createElement('td');
         const delBtn = document.createElement('button');
         delBtn.className = 'delete-action';
@@ -3417,7 +3389,6 @@
         ar.appendChild(tdA);
         actTable.appendChild(ar);
       });
-      // Row to add new action
       const addRow = document.createElement('tr');
       const addTd = document.createElement('td');
       addTd.colSpan = 6;
@@ -3746,7 +3717,7 @@
     const analysis = analyses[currentIndex];
     if (!analysis || !analysis.data) return;
     if (!Array.isArray(analysis.data.actionsRisques)) analysis.data.actionsRisques = [];
-    // Gather risks from operational scenarios (atelier 4)
+    // Gather risks from operational scenarios (atelier 4) for reference
     const riskMap = new Map();
     (analysis.data.so || []).forEach(scenario => {
       const vs = scenario.vraisemblance || scenario.vraisemblance;
@@ -3754,32 +3725,15 @@
       (scenario.risks || []).forEach(riskObj => {
         const name = riskObj.name || '';
         if (!name) return;
-        const key = name;
-        const cur = riskMap.get(key) || { name: key, vraisemblance: riskObj.vraisemblance || scenario.vraisemblance || 1, gravite: riskObj.gravite || scenario.gravite || 1 };
-        // keep max gravite and vraisemblance if multiple scenarios
-        cur.vraisemblance = Math.max(cur.vraisemblance, riskObj.vraisemblance || scenario.vraisemblance || 1);
-        cur.gravite = Math.max(cur.gravite, riskObj.gravite || scenario.gravite || 1);
-        riskMap.set(key, cur);
+        const cur = riskMap.get(name) || { name, vraisemblance: riskObj.vraisemblance || vs || 1, gravite: riskObj.gravite || gr || 1 };
+        cur.vraisemblance = Math.max(cur.vraisemblance, riskObj.vraisemblance || vs || 1);
+        cur.gravite = Math.max(cur.gravite, riskObj.gravite || gr || 1);
+        riskMap.set(name, cur);
       });
     });
-    let risks = Array.from(riskMap.values());
-    // Include any risks already present in actionsRisques that are not in riskMap (e.g., imported or added manually)
-    (analysis.data.actionsRisques || []).forEach(row => {
-      if (!riskMap.has(row.riskName)) {
-        risks.push({ name: row.riskName, vraisemblance: row.residualV || 1, gravite: row.residualG || 1, manual: row.manual });
-      }
-    });
-    risks.forEach(risk => {
-      // Find entry in actionsRisques
-      let row = analysis.data.actionsRisques.find(r => r.riskName === risk.name);
-      if (!row) {
-        row = { riskName: risk.name, residualV: risk.vraisemblance, residualG: risk.gravite, actions: [], manual: risk.manual };
-        analysis.data.actionsRisques.push(row);
-      } else if (risk.manual) {
-        row.manual = true;
-      }
+    analysis.data.actionsRisques.forEach(row => {
+      const risk = riskMap.get(row.riskName) || { name: row.riskName, vraisemblance: row.residualV || 1, gravite: row.residualG || 1 };
       const tr = document.createElement('tr');
-      // Risk name
       const tdName = document.createElement('td');
       if (row.manual) {
         const inpRisk = document.createElement('input');
@@ -3791,14 +3745,12 @@
         });
         tdName.appendChild(inpRisk);
       } else {
-        tdName.textContent = risk.name;
+        tdName.textContent = row.riskName;
       }
       tr.appendChild(tdName);
-      // Current vraisemblance
       const tdVr = document.createElement('td');
       tdVr.textContent = risk.vraisemblance;
       tr.appendChild(tdVr);
-      // Current gravite
       const tdGr = document.createElement('td');
       tdGr.textContent = risk.gravite;
       tr.appendChild(tdGr);
@@ -4585,19 +4537,11 @@
       });
     }
 
-    // Atelier 5: add a new GAP requirement row
+    // Atelier 5: import GAP requirements from Atelier 1
     const addGapRow = document.getElementById('add-gap-action-row');
     if (addGapRow) {
       addGapRow.addEventListener('click', () => {
-        const analysis = analyses[currentIndex];
-        if (!analysis.data) analysis.data = {};
-        if (!Array.isArray(analysis.data.gap)) analysis.data.gap = [];
-        const req = { id: uid(), titre: '', application: '', custom: true };
-        analysis.data.gap.push(req);
-        if (!Array.isArray(analysis.data.actionsGap)) analysis.data.actionsGap = [];
-        analysis.data.actionsGap.push({ sourceId: req.id, actions: [] });
-        saveAnalyses();
-        renderGapActions();
+        openImportModal('gap');
       });
     }
 
@@ -4626,16 +4570,11 @@
       });
     }
 
-    // Atelier 5: add a new risk action row
+    // Atelier 5: import risks from Atelier 4
     const addRiskRow = document.getElementById('add-risque-action-row');
     if (addRiskRow) {
       addRiskRow.addEventListener('click', () => {
-        const analysis = analyses[currentIndex];
-        if (!analysis.data) analysis.data = {};
-        if (!Array.isArray(analysis.data.actionsRisques)) analysis.data.actionsRisques = [];
-        analysis.data.actionsRisques.push({ riskName: '', residualV: 1, residualG: 1, actions: [], manual: true });
-        saveAnalyses();
-        renderRisquesActions();
+        openImportModal('risques');
       });
     }
     document.getElementById('add-pp-btn').addEventListener('click', () => {
