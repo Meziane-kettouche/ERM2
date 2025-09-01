@@ -43,10 +43,9 @@
           <div class="left">
             <h2>Atelier 4 – Scénarios opérationnels</h2>
             <p>Pour chaque scénario opérationnel, reliez un <strong>évènement redouté</strong> à un <strong>chemin d’attaque stratégique</strong> issu de l’atelier 3, puis décrivez les étapes de la cyber kill chain (Connaître, Rester, Trouver, Exploiter). Vous pouvez associer un ou plusieurs risques à chaque scénario et préciser pour chacun la vraisemblance et la gravité (échelle 1 à 4).</p>
-            <!-- Button and hidden file input to import a MITRE ATT&CK CSV file -->
+            <!-- Button to import MITRE techniques from the bundled CSV -->
             <div style="margin:0.8rem 0;">
               <button id="import-mitre-btn" class="add-item-btn">Importer base MITRE (CSV)</button>
-              <input type="file" id="mitre-file-input" accept=".csv" style="display:none" />
             </div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem;">
               <div class="table-container" style="overflow-x:auto; flex:1;">
@@ -82,6 +81,18 @@
     </main>
   </div>
   <script src="app.js"></script>
+  <!-- Modal for importing MITRE techniques from the bundled CSV -->
+  <div id="mitre-modal" class="modal" style="display:none">
+    <div class="modal-content">
+      <h3>Importer des techniques MITRE</h3>
+      <input id="mitre-search" type="text" placeholder="Rechercher..." style="width:100%; margin-bottom:0.5rem;" />
+      <ul id="mitre-list" class="risk-list"></ul>
+      <div style="margin-top:0.6rem; display:flex; gap:0.5rem;">
+        <button id="mitre-import-apply" class="add-item-btn" style="flex:1;">Importer la sélection</button>
+        <button id="mitre-close-btn" class="header-btn" style="flex:1;">Fermer</button>
+      </div>
+    </div>
+  </div>
   <!-- Modal for selecting a risk from MITRE/OWASP library or adding manually -->
   <div id="risk-modal" class="modal" style="display:none">
     <div class="modal-content">

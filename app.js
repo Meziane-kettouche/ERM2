@@ -1033,27 +1033,73 @@
     return Array.from(map.values());
   }
 
-  // Handle MITRE CSV import: attach an event listener to the import button
+  // Handle MITRE CSV import: open a modal to select techniques from the bundled CSV
   function setupMitreImport() {
     const btn = document.getElementById('import-mitre-btn');
-    const fileInput = document.getElementById('mitre-file-input');
-    if (!btn || !fileInput) return;
+    const modal = document.getElementById('mitre-modal');
+    const listEl = document.getElementById('mitre-list');
+    const searchInput = document.getElementById('mitre-search');
+    const applyBtn = document.getElementById('mitre-import-apply');
+    const closeBtn = document.getElementById('mitre-close-btn');
+    if (!btn || !modal || !listEl || !searchInput || !applyBtn || !closeBtn) return;
+
+    let items = [];
+    let selected = new Set();
+
+    function renderList(arr) {
+      listEl.innerHTML = '';
+      arr.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = `${item.id} – ${item.title}`;
+        if (selected.has(item.id)) li.classList.add('selected');
+        li.addEventListener('click', () => {
+          if (selected.has(item.id)) {
+            selected.delete(item.id);
+            li.classList.remove('selected');
+          } else {
+            selected.add(item.id);
+            li.classList.add('selected');
+          }
+        });
+        listEl.appendChild(li);
+      });
+    }
+
     btn.addEventListener('click', () => {
-      fileInput.value = '';
-      fileInput.click();
+      fetch('mitre_attack.csv')
+        .then(res => {
+          if (!res.ok) throw new Error('fetch');
+          return res.text();
+        })
+        .then(text => {
+          items = parseMitreCsv(text);
+          selected = new Set((mitreLibrary || []).map(t => t.id));
+          renderList(items);
+          searchInput.value = '';
+          modal.style.display = 'flex';
+        })
+        .catch(() => {
+          alert('Impossible de charger le fichier MITRE.');
+        });
     });
-    fileInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(evt) {
-        const text = evt.target.result;
-        mitreLibrary = parseMitreCsv(text);
-        // Persist to localStorage
-        localStorage.setItem('ebiosMitreLibrary', JSON.stringify(mitreLibrary));
-        alert('Base MITRE importée avec ' + mitreLibrary.length + ' techniques.');
-      };
-      reader.readAsText(file);
+
+    searchInput.addEventListener('input', () => {
+      const term = searchInput.value.toLowerCase();
+      const filtered = items.filter(t =>
+        (t.id + ' ' + t.title + ' ' + t.description).toLowerCase().includes(term)
+      );
+      renderList(filtered);
+    });
+
+    applyBtn.addEventListener('click', () => {
+      mitreLibrary = items.filter(t => selected.has(t.id));
+      localStorage.setItem('ebiosMitreLibrary', JSON.stringify(mitreLibrary));
+      modal.style.display = 'none';
+      alert('Base MITRE importée avec ' + mitreLibrary.length + ' techniques.');
+    });
+
+    closeBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
     });
   }
 
@@ -4933,25 +4979,7 @@
     setupAddButtons();
     setupMitreImport();
     setupKillChainToggle();
-    setupActionImport();
-    // Auto-load a bundled MITRE CSV if no library is loaded and a CSV file is present.
-    if (mitreLibrary.length === 0) {
-      fetch('mitre_attack.csv').then(res => {
-        if (res.ok) return res.text();
-        throw new Error('No MITRE CSV bundled');
-      }).then(text => {
-        const parsed = parseMitreCsv(text);
-        if (parsed && parsed.length > 0) {
-          mitreLibrary = parsed;
-          localStorage.setItem('ebiosMitreLibrary', JSON.stringify(mitreLibrary));
-          // If the operations table exists on this page, re-render scenarios to
-          // refresh the risk library used in the modal
-          if (document.getElementById('ops-body')) {
-            renderSO();
-          }
-        }
-      }).catch(() => {});
-    }
+      setupActionImport();
     // Select the previously selected analysis or the first one by default
     if (analyses.length > 0) {
       currentIndex = savedIndex >= 0 ? savedIndex : 0;
