@@ -208,18 +208,24 @@
     analysis.data.missions.forEach((mission, idx) => {
       // Ensure unique id and supports array with objects {name, description, responsable}
       if (!mission.id) mission.id = uid();
-      if (!Array.isArray(mission.supports)) {
-        // Convert previous data (string or array of strings) into objects with name
-        if (Array.isArray(mission.supports)) {
-          mission.supports = mission.supports.map(s => {
-            if (typeof s === 'string') return { name: s, description: '', responsable: '' };
-            return s;
-          });
-        } else if (typeof mission.supports === 'string' && mission.supports.trim() !== '') {
-          mission.supports = mission.supports.split(',').map(s => ({ name: s.trim(), description: '', responsable: '' }));
-        } else {
-          mission.supports = [];
-        }
+      // Normalise legacy data formats where supports might be stored as
+      // strings or arrays of strings instead of the expected array of
+      // objects.  This previously failed when mission.supports was already
+      // an array because a guarding condition prevented the conversion.
+      // Remove that guard and handle each case explicitly.
+      if (Array.isArray(mission.supports)) {
+        mission.supports = mission.supports.map(s => {
+          if (typeof s === 'string') {
+            return { name: s, description: '', responsable: '' };
+          }
+          return s;
+        });
+      } else if (typeof mission.supports === 'string' && mission.supports.trim() !== '') {
+        mission.supports = mission.supports
+          .split(',')
+          .map(s => ({ name: s.trim(), description: '', responsable: '' }));
+      } else {
+        mission.supports = [];
       }
       const tr = document.createElement('tr');
       // Denomination
