@@ -965,31 +965,6 @@
     });
   }
 
-  // ----- Risk selection modal (MITRE/OWASP) -----
-  // A list of common attack techniques inspired by MITRE ATT&CK and OWASP.
-  const RISK_LIBRARY = [
-    'Phishing',
-    'Malware',
-    'Ransomware',
-    'Injection SQL',
-    'Cross‑Site Scripting (XSS)',
-    'Escalade de privilèges',
-    'Déni de service (DoS)',
-    'Vol de données',
-    'Fuite d’informations',
-    'Compte compromis',
-    'Man‑in‑the‑Middle',
-    'Attaque par mot de passe',
-    'Force brute',
-    'Command and Control',
-    'Exfiltration de données',
-    'Livraison de malware',
-    'Injection XML',
-    'Inclusion de fichiers',
-    'Sécurité insuffisante des API',
-    'Configuration non sécurisée'
-  ];
-
   // Store the scenario currently being edited when the risk modal is opened.
   let riskModalTarget = null;
 
@@ -1052,87 +1027,15 @@
     return Array.from(map.values());
   }
 
-  // Handle MITRE CSV import: open a modal to select techniques from the bundled CSV
-  function setupMitreImport() {
-    const btn = document.getElementById('import-mitre-btn');
-    const modal = document.getElementById('mitre-modal');
-    const listEl = document.getElementById('mitre-list');
-    const searchInput = document.getElementById('mitre-search');
-    const applyBtn = document.getElementById('mitre-import-apply');
-    const closeBtn = document.getElementById('mitre-close-btn');
-    if (!btn || !modal || !listEl || !searchInput || !applyBtn || !closeBtn) return;
-
-    let items = [];
-    let selected = new Set();
-
-    function renderList(arr) {
-      listEl.innerHTML = '';
-      arr.forEach(item => {
-        const li = document.createElement('li');
-        li.textContent = `${item.id} – ${item.title}`;
-        if (selected.has(item.id)) li.classList.add('selected');
-        li.addEventListener('click', () => {
-          if (selected.has(item.id)) {
-            selected.delete(item.id);
-            li.classList.remove('selected');
-          } else {
-            selected.add(item.id);
-            li.classList.add('selected');
-          }
-        });
-        listEl.appendChild(li);
-      });
-    }
-
-    btn.addEventListener('click', () => {
-      fetch('mitre_attack.csv')
-        .then(res => {
-          if (!res.ok) throw new Error('fetch');
-          return res.text();
-        })
-        .then(text => {
-          items = parseMitreCsv(text);
-          selected = new Set((mitreLibrary || []).map(t => t.id));
-          renderList(items);
-          searchInput.value = '';
-          modal.style.display = 'flex';
-        })
-        .catch(() => {
-          alert('Impossible de charger le fichier MITRE.');
-        });
-    });
-
-    searchInput.addEventListener('input', () => {
-      const term = searchInput.value.toLowerCase();
-      const filtered = items.filter(t =>
-        (t.id + ' ' + t.title + ' ' + t.description).toLowerCase().includes(term)
-      );
-      renderList(filtered);
-    });
-
-    applyBtn.addEventListener('click', () => {
-      mitreLibrary = items.filter(t => selected.has(t.id));
-      localStorage.setItem('ebiosMitreLibrary', JSON.stringify(mitreLibrary));
-      modal.style.display = 'none';
-      alert('Base MITRE importée avec ' + mitreLibrary.length + ' techniques.');
-    });
-
-    closeBtn.addEventListener('click', () => {
-      modal.style.display = 'none';
-    });
-  }
-
-  // Setup the kill chain toggle button in Atelier 4.  When clicked,
-  // it toggles a CSS class on the operations table to hide/show the
-  // columns Connaître/Rester/Trouver/Exploiter, and updates the button
-  // label accordingly.
-  function setupKillChainToggle() {
-    const btn = document.getElementById('toggle-killchain-btn');
+  // Setup individual column toggle icons for the kill chain columns
+  function setupColumnToggles() {
     const table = document.getElementById('ops-table');
-    if (!btn || !table) return;
-    btn.addEventListener('click', () => {
-      const hidden = table.classList.toggle('hide-killchain');
-      btn.textContent = hidden ? 'Afficher Kill Chain' : 'Masquer Kill Chain';
+    if (!table) return;
+    table.querySelectorAll('.col-toggle').forEach(icon => {
+      const col = icon.getAttribute('data-col');
+      icon.addEventListener('click', () => {
+        table.classList.toggle('hide-' + col);
+      });
     });
   }
 
@@ -1235,8 +1138,8 @@
           if (!riskMap.has(name)) {
             // try to find description from mitreLibrary
             let desc = '';
-            const tech = mitreLibrary.find(t => t && t['Technique ID'] === name || t && t['Technique Name'] === name);
-            if (tech) desc = tech['Technique Description'] || '';
+            const tech = mitreLibrary.find(t => t && (t.id === name || t.title === name));
+            if (tech) desc = tech.description || '';
             riskMap.set(name, { name, desc });
           }
         });
@@ -1367,120 +1270,80 @@
     closeImportModal();
   }
 
-  // Open the risk modal for a given scenario item.  This populates the
-  // list of risks, sets up search filtering and manual addition, and
-  // shows the modal overlay.
+  // Open the risk modal and display MITRE techniques from the CSV
   function openRiskModal(targetItem) {
     riskModalTarget = targetItem;
     const modal = document.getElementById('risk-modal');
     if (!modal) return;
     const searchInput = document.getElementById('risk-search');
-    const list = document.getElementById('risk-list');
-    const manualInput = document.getElementById('risk-manual');
-    const manualBtn = document.getElementById('risk-add-manual');
+    const tableBody = document.getElementById('risk-table-body');
+    const selectedDiv = document.getElementById('risk-selected');
     const closeBtn = document.getElementById('risk-close-btn');
     const applyBtn = document.getElementById('risk-select-apply');
-    // Helper to render risk list based on current filter
-    // Track currently selected risk names in the modal for multi‑selection
-    let selectedRiskNames = [];
-    function renderRiskList(filter) {
-      list.innerHTML = '';
+    let selectedIds = new Set();
+
+    function renderTable(filter) {
       const term = (filter || '').toLowerCase();
-      const source = (mitreLibrary && mitreLibrary.length > 0) ? mitreLibrary : RISK_LIBRARY;
-      const items = Array.isArray(source)
-        ? source.map(it => {
-            if (typeof it === 'string') {
-              return { id: '', title: it, description: '', name: it };
-            }
-            return {
-              id: it.id || '',
-              title: it.title || '',
-              description: it.description || '',
-              name: it.id ? (it.id + ' ' + it.title) : (it.title || it.id)
-            };
-          })
-        : [];
-      // Filter by term across id, title and description
-      const filtered = items.filter(obj => {
-        const full = (obj.name + ' ' + (obj.description || '')).toLowerCase();
-        return full.includes(term);
-      });
+      tableBody.innerHTML = '';
+      const filtered = (mitreLibrary || []).filter(obj =>
+        (obj.id + ' ' + obj.title + ' ' + obj.description).toLowerCase().includes(term)
+      );
       filtered.forEach(obj => {
-        const li = document.createElement('li');
-        // Build inner HTML with ID, title and description
-        li.innerHTML = `<div><strong>${obj.id}</strong> ${obj.title}</div>` +
-          `<div class="risk-desc">${obj.description}</div>`;
-        if (selectedRiskNames.includes(obj.name)) {
-          li.classList.add('selected');
-        }
-        li.addEventListener('click', () => {
-          const idx = selectedRiskNames.indexOf(obj.name);
-          if (idx >= 0) {
-            selectedRiskNames.splice(idx, 1);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${obj.id}</td><td>${obj.title}</td><td>${obj.description}</td>`;
+        if (selectedIds.has(obj.id)) tr.classList.add('selected');
+        tr.addEventListener('click', () => {
+          if (selectedIds.has(obj.id)) {
+            selectedIds.delete(obj.id);
           } else {
-            selectedRiskNames.push(obj.name);
+            selectedIds.add(obj.id);
           }
-          renderRiskList(searchInput.value);
+          renderTable(searchInput.value);
+          updateSelected();
         });
-        list.appendChild(li);
+        tableBody.appendChild(tr);
       });
-      if (filtered.length === 0) {
-        const li = document.createElement('li');
-        li.textContent = 'Aucun résultat';
-        li.style.fontStyle = 'italic';
-        li.style.cursor = 'default';
-        list.appendChild(li);
-      }
     }
-    // Expose helper globally so we can call inside event handlers
-    function addRiskToScenario(name) {
-      if (!riskModalTarget) return;
-      // Use scenario's vraisemblance and gravité levels without prompting
-      riskModalTarget.risks.push({ name: name, vraisemblance: riskModalTarget.vraisemblance, gravite: riskModalTarget.gravite });
-      saveAnalyses();
-      renderSO();
-      closeRiskModal();
+
+    function updateSelected() {
+      selectedDiv.innerHTML = '';
+      selectedIds.forEach(id => {
+        const item = mitreLibrary.find(t => t.id === id);
+        if (item) {
+          const div = document.createElement('div');
+          div.textContent = `${item.id} – ${item.title}`;
+          selectedDiv.appendChild(div);
+        }
+      });
     }
-    // Bind search input
+
     searchInput.value = '';
-    searchInput.oninput = (e) => {
-      renderRiskList(e.target.value);
+    searchInput.oninput = e => {
+      renderTable(e.target.value);
     };
-    // Bind manual addition
-    manualInput.value = '';
-    manualBtn.onclick = () => {
-      const name = manualInput.value.trim();
-      if (!name) return;
-      addRiskToScenario(name);
-    };
-    // Bind close
+
     closeBtn.onclick = () => {
       closeRiskModal();
     };
-    // Bind apply selection: add all selected risks with same levels
+
     if (applyBtn) {
       applyBtn.onclick = () => {
         if (!riskModalTarget) return;
-        if (!selectedRiskNames || selectedRiskNames.length === 0) {
-          closeRiskModal();
-          return;
-        }
-        selectedRiskNames.forEach(name => {
-          riskModalTarget.risks.push({ name: name, vraisemblance: riskModalTarget.vraisemblance, gravite: riskModalTarget.gravite });
+        selectedIds.forEach(id => {
+          const item = mitreLibrary.find(t => t.id === id);
+          if (item) {
+            const name = item.id + ' ' + item.title;
+            riskModalTarget.risks.push({ name: name, vraisemblance: riskModalTarget.vraisemblance, gravite: riskModalTarget.gravite });
+          }
         });
         saveAnalyses();
         renderSO();
         closeRiskModal();
       };
     }
-    // Before showing the modal, ensure the MITRE library is loaded.  If
-    // no library is present, attempt to load the bundled CSV on the fly.
+
     function ensureMitreLoaded(callback) {
-      if (mitreLibrary && mitreLibrary.length > 0) {
-        callback();
-        return;
-      }
-      // If data is stored in localStorage, reuse it
+      if (mitreLibrary && mitreLibrary.length > 0) { callback(); return; }
       try {
         const stored = localStorage.getItem('ebiosMitreLibrary');
         if (stored) {
@@ -1492,7 +1355,6 @@
           }
         }
       } catch (e) {}
-      // Otherwise fetch the CSV from the bundled resource and parse it
       fetch('mitre_attack.csv').then(res => {
         if (!res.ok) throw new Error('Cannot load MITRE CSV');
         return res.text();
@@ -1502,16 +1364,15 @@
           mitreLibrary = parsed;
           localStorage.setItem('ebiosMitreLibrary', JSON.stringify(mitreLibrary));
         }
-      }).catch(() => {
-        // ignore errors and fall back to default library
       }).finally(() => {
         callback();
       });
     }
-    // Show modal and populate list after ensuring the MITRE library is loaded
+
     ensureMitreLoaded(() => {
       modal.style.display = 'flex';
-      renderRiskList(searchInput.value);
+      renderTable(searchInput.value);
+      updateSelected();
     });
   }
 
@@ -3032,6 +2893,7 @@
         // Helper to render kill chain stage cell
         function renderStageCell(stageKey) {
           const cell = document.createElement('td');
+          cell.classList.add('col-' + stageKey);
           const wrapper = document.createElement('div');
           wrapper.className = 'assoc-cell';
           // remove existing
@@ -3095,8 +2957,9 @@
           riskCell.appendChild(tag);
         });
         const addRiskBtn = document.createElement('button');
-        addRiskBtn.className = 'add-assoc-btn';
-        addRiskBtn.textContent = '+ Ajouter';
+        addRiskBtn.className = 'add-risk-btn';
+        addRiskBtn.innerHTML = '&#x2795;';
+        addRiskBtn.title = 'Ajouter un risque';
         addRiskBtn.addEventListener('click', () => {
           // Open the MITRE/OWASP risk selection modal for this scenario
           openRiskModal(item);
@@ -4922,8 +4785,7 @@
     setupNavigation();
     setupSidebarToggle();
     setupAddButtons();
-    setupMitreImport();
-    setupKillChainToggle();
+    setupColumnToggles();
       setupActionImport();
     // Ensure the current analysis ID is saved even if the user reloads or
     // closes the page without navigating through the provided links.
