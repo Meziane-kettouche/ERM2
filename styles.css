@@ -1046,3 +1046,68 @@ canvas {
   cursor: pointer;
   margin-left: 0.3rem;
 }
+
+/* Radar chart styles for Atelier 3 cartography */
+.radar-board {
+  position: relative;
+  padding: 18px;
+}
+.radar-canvas {
+  display: block;
+  margin: 0 auto;
+  background: #ffffff;
+}
+.radar-label {
+  font-size: 12px;
+  fill: #8a93a3;
+}
+.radar-label.radar-small {
+  font-size: 11px;
+}
+.radar-ring {
+  fill: none;
+  stroke-width: 2;
+}
+.radar-thick {
+  fill: none;
+  stroke-width: 10;
+  opacity: 0.85;
+}
+.radar-grid {
+  stroke: #dfe6ef;
+}
+.radar-cross {
+  stroke: #9fb3c8;
+  stroke-dasharray: 6 6;
+}
+.radar-sector-tag {
+  font-size: 13px;
+  fill: #334155;
+  font-weight: 600;
+}
+.radar-sector-box {
+  fill: none;
+  stroke: #dfe6ef;
+  stroke-width: 2;
+  rx: 16;
+  ry: 16;
+}
+.radar-point {
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.radar-point:hover {
+  transform: scale(1.1);
+}
+.radar-tooltip {
+  position: absolute;
+  padding: 8px 10px;
+  background: #0f172a;
+  color: #fff;
+  border-radius: 8px;
+  font-size: 12px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -12px);
+  white-space: nowrap;
+}
