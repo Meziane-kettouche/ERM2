@@ -804,33 +804,47 @@ canvas {
   margin-bottom: 0.5rem;
   color: var(--text-primary);
 }
-.risk-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+
+/* Risk selection table inside modal */
+.risk-table-container {
   max-height: 300px;
   overflow-y: auto;
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
 }
-.risk-list li {
+.risk-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.risk-table thead {
+  position: sticky;
+  top: 0;
+  background: var(--bg-panel);
+}
+.risk-table th,
+.risk-table td {
+  border: 1px solid var(--border-color);
   padding: 0.4rem 0.6rem;
-  cursor: pointer;
-  border-bottom: 1px solid var(--border-color);
   font-size: 0.9rem;
   color: var(--text-primary);
 }
-.risk-list li:last-child {
-  border-bottom: none;
+.risk-table tbody tr {
+  cursor: pointer;
 }
-.risk-list li:hover {
-  background-color: var(--bg-light);
-}
-
-/* Highlight selected risks in the modal */
-.risk-list li.selected {
+.risk-table tbody tr.selected {
   background-color: var(--accent-dark);
   color: #ffffff;
+}
+
+#risk-selected {
+  margin-top: 0.5rem;
+  max-height: 100px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 0.4rem;
+  font-size: 0.9rem;
+  color: var(--text-primary);
 }
 
 /* ----- Import modal list styling (Atelier 5) ----- */
@@ -873,13 +887,6 @@ canvas {
 }
 .import-btn:hover {
   background: var(--accent-dark);
-}
-
-/* Risk description styling within modal list */
-.risk-desc {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  margin-top: 0.1rem;
 }
 
 /* Nested action tables inside atelier 5 */
@@ -1010,15 +1017,21 @@ canvas {
   text-align: center;
 }
 
-/* Hide kill chain columns (3-6) when the table has the class hide-killchain */
-#ops-table.hide-killchain th:nth-child(3),
-#ops-table.hide-killchain td:nth-child(3),
-#ops-table.hide-killchain th:nth-child(4),
-#ops-table.hide-killchain td:nth-child(4),
-#ops-table.hide-killchain th:nth-child(5),
-#ops-table.hide-killchain td:nth-child(5),
-#ops-table.hide-killchain th:nth-child(6),
-#ops-table.hide-killchain td:nth-child(6) {
+/* Hide individual kill chain columns when corresponding class is set */
+#ops-table.hide-connaitre td:nth-child(3),
+#ops-table.hide-connaitre th:nth-child(3) .col-title {
+  display: none;
+}
+#ops-table.hide-rester td:nth-child(4),
+#ops-table.hide-rester th:nth-child(4) .col-title {
+  display: none;
+}
+#ops-table.hide-trouver td:nth-child(5),
+#ops-table.hide-trouver th:nth-child(5) .col-title {
+  display: none;
+}
+#ops-table.hide-exploiter td:nth-child(6),
+#ops-table.hide-exploiter th:nth-child(6) .col-title {
   display: none;
 }
 
@@ -1026,4 +1039,10 @@ canvas {
 #ops-table select {
   width: 100%;
   box-sizing: border-box;
+}
+
+/* Column toggle icons */
+.col-toggle {
+  cursor: pointer;
+  margin-left: 0.3rem;
 }

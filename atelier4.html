@@ -43,10 +43,6 @@
           <div class="left">
             <h2>Atelier 4 – Scénarios opérationnels</h2>
             <p>Pour chaque scénario opérationnel, reliez un <strong>évènement redouté</strong> à un <strong>chemin d’attaque stratégique</strong> issu de l’atelier 3, puis décrivez les étapes de la cyber kill chain (Connaître, Rester, Trouver, Exploiter). Vous pouvez associer un ou plusieurs risques à chaque scénario et préciser pour chacun la vraisemblance et la gravité (échelle 1 à 4).</p>
-            <!-- Button to import MITRE techniques from the bundled CSV -->
-            <div style="margin:0.8rem 0;">
-              <button id="import-mitre-btn" class="add-item-btn">Importer base MITRE (CSV)</button>
-            </div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem;">
               <div class="table-container" style="overflow-x:auto; flex:1;">
               <table id="ops-table" class="data-table" style="min-width:100%;">
@@ -54,10 +50,10 @@
                   <tr>
                     <th>Évènement</th>
                     <th>Chemin stratégique</th>
-                    <th>Connaître</th>
-                    <th>Rester</th>
-                    <th>Trouver</th>
-                    <th>Exploiter</th>
+                    <th><span class="col-title">Connaître</span> <span class="col-toggle" data-col="connaitre">👁️</span></th>
+                    <th><span class="col-title">Rester</span> <span class="col-toggle" data-col="rester">👁️</span></th>
+                    <th><span class="col-title">Trouver</span> <span class="col-toggle" data-col="trouver">👁️</span></th>
+                    <th><span class="col-title">Exploiter</span> <span class="col-toggle" data-col="exploiter">👁️</span></th>
                     <th>Risques</th>
                     <th>Vraisemblance</th>
                     <th>Gravité</th>
@@ -66,9 +62,6 @@
                 </thead>
                 <tbody id="ops-body"></tbody>
               </table>
-              </div>
-              <div style="margin-left:0.5rem;">
-                <button id="toggle-killchain-btn" class="add-item-btn" style="white-space:nowrap;">Masquer Kill Chain</button>
               </div>
             </div>
             <button id="add-op-btn" class="add-item-btn">+ Ajouter un scénario opérationnel</button>
@@ -81,28 +74,20 @@
     </main>
   </div>
   <script src="app.js"></script>
-  <!-- Modal for importing MITRE techniques from the bundled CSV -->
-  <div id="mitre-modal" class="modal" style="display:none">
-    <div class="modal-content">
-      <h3>Importer des techniques MITRE</h3>
-      <input id="mitre-search" type="text" placeholder="Rechercher..." style="width:100%; margin-bottom:0.5rem;" />
-      <ul id="mitre-list" class="risk-list"></ul>
-      <div style="margin-top:0.6rem; display:flex; gap:0.5rem;">
-        <button id="mitre-import-apply" class="add-item-btn">Importer la sélection</button>
-        <button id="mitre-close-btn" class="header-btn" style="flex:1;">Fermer</button>
-      </div>
-    </div>
-  </div>
-  <!-- Modal for selecting a risk from MITRE/OWASP library or adding manually -->
+  <!-- Modal for selecting risks from the MITRE CSV -->
   <div id="risk-modal" class="modal" style="display:none">
     <div class="modal-content">
-      <h3>Ajouter un risque (MITRE / OWASP)</h3>
+      <h3>Ajouter un risque (MITRE)</h3>
       <input id="risk-search" type="text" placeholder="Rechercher..." style="width:100%; margin-bottom:0.5rem;" />
-      <ul id="risk-list" class="risk-list"></ul>
-      <div style="margin-top:0.6rem;">
-        <input id="risk-manual" type="text" placeholder="Nom du risque personnalisé" style="width:100%; margin-bottom:0.4rem;" />
-        <button id="risk-add-manual" class="add-item-btn">Ajouter ce risque</button>
+      <div class="risk-table-container">
+        <table id="risk-table" class="risk-table">
+          <thead>
+            <tr><th>Technique ID</th><th>Technique Name</th><th>Technique Description</th></tr>
+          </thead>
+          <tbody id="risk-table-body"></tbody>
+        </table>
       </div>
+      <div id="risk-selected" class="risk-selected"></div>
       <div style="margin-top:0.6rem; display:flex; gap:0.5rem;">
         <button id="risk-select-apply" class="add-item-btn">Ajouter la sélection</button>
         <button id="risk-close-btn" class="header-btn" style="flex:1;">Fermer</button>
