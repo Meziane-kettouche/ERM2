@@ -3357,6 +3357,36 @@
         renderPlanActions();
       });
       addTd.appendChild(addBtn);
+      const addExisting = document.createElement('button');
+      addExisting.className = 'add-assoc-btn';
+      addExisting.textContent = '+ Action existante';
+      addExisting.addEventListener('click', () => {
+        const allActs = [];
+        analysis.data.actionsGap.forEach(e => {
+          if (e !== entry && Array.isArray(e.actions)) {
+            e.actions.forEach(a => {
+              if (a && a.name) allActs.push(a);
+            });
+          }
+        });
+        const currentNames = entry.actions.map(a => (a.name || '').trim());
+        const available = allActs.filter(a => !currentNames.includes((a.name || '').trim()));
+        if (available.length === 0) {
+          alert('Aucune action existante disponible.');
+          return;
+        }
+        const msg = 'Sélectionnez une action existante:\n' + available.map((a,i)=>`${i+1}. ${a.name}`).join('\n');
+        const input = prompt(msg);
+        if (input === null) return;
+        const index = parseInt(input,10) - 1;
+        if (!isNaN(index) && index >=0 && index < available.length) {
+          entry.actions.push(Object.assign({}, available[index]));
+          saveAnalyses();
+          renderGapActions();
+          renderPlanActions();
+        }
+      });
+      addTd.appendChild(addExisting);
       addRow.appendChild(addTd);
       actTable.appendChild(addRow);
       tdActions.appendChild(actTable);
@@ -3499,7 +3529,7 @@
         ar.appendChild(tdA);
         actTable.appendChild(ar);
       });
-      // Add new action row
+      // Add new or existing action
       const addRow = document.createElement('tr');
       const addTd = document.createElement('td');
       addTd.colSpan = 6;
@@ -3513,6 +3543,36 @@
         renderPlanActions();
       });
       addTd.appendChild(addBtnA);
+      const addExisting = document.createElement('button');
+      addExisting.className = 'add-assoc-btn';
+      addExisting.textContent = '+ Action existante';
+      addExisting.addEventListener('click', () => {
+        const allActs = [];
+        analysis.data.actionsSupports.forEach(r => {
+          if (r !== row && Array.isArray(r.actions)) {
+            r.actions.forEach(a => {
+              if (a && a.name) allActs.push(a);
+            });
+          }
+        });
+        const currentNames = row.actions.map(a => (a.name || '').trim());
+        const available = allActs.filter(a => !currentNames.includes((a.name || '').trim()));
+        if (available.length === 0) {
+          alert('Aucune action existante disponible.');
+          return;
+        }
+        const msg = 'Sélectionnez une action existante:\n' + available.map((a,i)=>`${i+1}. ${a.name}`).join('\n');
+        const input = prompt(msg);
+        if (input === null) return;
+        const index = parseInt(input,10) - 1;
+        if (!isNaN(index) && index >=0 && index < available.length) {
+          row.actions.push(Object.assign({}, available[index]));
+          saveAnalyses();
+          renderSupportActions();
+          renderPlanActions();
+        }
+      });
+      addTd.appendChild(addExisting);
       addRow.appendChild(addTd);
       actTable.appendChild(addRow);
       tdActions.appendChild(actTable);
@@ -3648,7 +3708,7 @@
         ar.appendChild(tdA);
         actTable.appendChild(ar);
       });
-      // Row to add new action
+      // Row to add new or existing action
       const addRow = document.createElement('tr');
       const addTd = document.createElement('td');
       addTd.colSpan = 6;
@@ -3662,6 +3722,36 @@
         renderPlanActions();
       });
       addTd.appendChild(addBtnA);
+      const addExisting = document.createElement('button');
+      addExisting.className = 'add-assoc-btn';
+      addExisting.textContent = '+ Action existante';
+      addExisting.addEventListener('click', () => {
+        const allActs = [];
+        analysis.data.actionsParties.forEach(r => {
+          if (r !== row && Array.isArray(r.actions)) {
+            r.actions.forEach(a => {
+              if (a && a.name) allActs.push(a);
+            });
+          }
+        });
+        const currentNames = row.actions.map(a => (a.name || '').trim());
+        const available = allActs.filter(a => !currentNames.includes((a.name || '').trim()));
+        if (available.length === 0) {
+          alert('Aucune action existante disponible.');
+          return;
+        }
+        const msg = 'Sélectionnez une action existante:\n' + available.map((a,i)=>`${i+1}. ${a.name}`).join('\n');
+        const input = prompt(msg);
+        if (input === null) return;
+        const index = parseInt(input,10) - 1;
+        if (!isNaN(index) && index >=0 && index < available.length) {
+          row.actions.push(Object.assign({}, available[index]));
+          saveAnalyses();
+          renderPartiesActions();
+          renderPlanActions();
+        }
+      });
+      addTd.appendChild(addExisting);
       addRow.appendChild(addTd);
       actTable.appendChild(addRow);
       tdActions.appendChild(actTable);
@@ -3852,7 +3942,7 @@
         ar.appendChild(tdA);
         actTable.appendChild(ar);
       });
-      // Row to add new action
+      // Row to add new or existing action
       const addRow = document.createElement('tr');
       const addTd = document.createElement('td');
       addTd.colSpan = 6;
@@ -3866,6 +3956,36 @@
         renderPlanActions();
       });
       addTd.appendChild(addBtnA);
+      const addExisting = document.createElement('button');
+      addExisting.className = 'add-assoc-btn';
+      addExisting.textContent = '+ Action existante';
+      addExisting.addEventListener('click', () => {
+        const allActs = [];
+        analysis.data.actionsRisques.forEach(r => {
+          if (r !== row && Array.isArray(r.actions)) {
+            r.actions.forEach(a => {
+              if (a && a.name) allActs.push(a);
+            });
+          }
+        });
+        const currentNames = row.actions.map(a => (a.name || '').trim());
+        const available = allActs.filter(a => !currentNames.includes((a.name || '').trim()));
+        if (available.length === 0) {
+          alert('Aucune action existante disponible.');
+          return;
+        }
+        const msg = 'Sélectionnez une action existante:\n' + available.map((a,i)=>`${i+1}. ${a.name}`).join('\n');
+        const input = prompt(msg);
+        if (input === null) return;
+        const index = parseInt(input,10) - 1;
+        if (!isNaN(index) && index >=0 && index < available.length) {
+          row.actions.push(Object.assign({}, available[index]));
+          saveAnalyses();
+          renderRisquesActions();
+          renderPlanActions();
+        }
+      });
+      addTd.appendChild(addExisting);
       addRow.appendChild(addTd);
       actTable.appendChild(addRow);
       tdActions.appendChild(actTable);
