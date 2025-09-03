@@ -57,6 +57,7 @@
                 <tr>
                   <th>Exigence</th>
                   <th>Actions</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody id="gap-actions-body"></tbody>
@@ -114,6 +115,7 @@
                   <th>Résiduel (Vraisemblance)</th>
                   <th>Résiduel (Gravité)</th>
                   <th>Actions</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody id="risques-actions-body"></tbody>
@@ -150,9 +152,10 @@
             <h3 id="import-modal-title">Importer</h3>
             <input type="text" id="import-search" placeholder="Rechercher..." class="form-input" style="width:100%;margin-bottom:0.5rem;" />
             <div id="import-list" style="max-height:300px; overflow-y:auto; border:1px solid var(--bg-panel); border-radius:4px; padding:4px;"></div>
+            <div id="import-selected"></div>
             <div style="margin-top:0.5rem; display:flex; gap:0.5rem;">
-              <button id="import-confirm" class="add-item-btn">Ajouter la sélection</button>
-              <button id="import-cancel" class="header-btn">Fermer</button>
+              <button id="import-confirm" class="add-item-btn" style="flex:1;">Ajouter la sélection</button>
+              <button id="import-cancel" class="header-btn" style="flex:1;">Fermer</button>
             </div>
           </div>
         </div>
