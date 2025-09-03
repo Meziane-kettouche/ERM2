@@ -1051,6 +1051,7 @@
    */
   let currentImportType = null;
   let importSelections = new Set();
+  let importItems = [];
 
   function setupActionImport() {
     const confirmBtn = document.getElementById('import-confirm');
@@ -1070,7 +1071,8 @@
     const titleEl = document.getElementById('import-modal-title');
     const listEl = document.getElementById('import-list');
     const searchInput = document.getElementById('import-search');
-    if (!titleEl || !listEl || !searchInput) return;
+    const selectedDiv = document.getElementById('import-selected');
+    if (!titleEl || !listEl || !searchInput || !selectedDiv) return;
     // Set modal title based on type
     switch (type) {
       case 'gap':
@@ -1150,6 +1152,7 @@
     }
     // Render list
     listEl.innerHTML = '';
+    importItems = items;
     items.forEach(item => {
       const div = document.createElement('div');
       div.className = 'import-item';
@@ -1174,9 +1177,11 @@
           importSelections.add(id);
           div.classList.add('selected');
         }
+        renderImportSelected();
       });
       listEl.appendChild(div);
     });
+    renderImportSelected();
     // Show modal
     modal.style.display = 'flex';
     searchInput.value = '';
@@ -1203,6 +1208,7 @@
     if (modal) modal.style.display = 'none';
     importSelections = new Set();
     currentImportType = null;
+    renderImportSelected();
   }
 
   // Apply import selection to the current analysis
@@ -1268,6 +1274,20 @@
     // Update plan actions after any import
     renderPlanActions();
     closeImportModal();
+  }
+
+  function renderImportSelected() {
+    const container = document.getElementById('import-selected');
+    if (!container) return;
+    container.innerHTML = '';
+    importSelections.forEach(id => {
+      const item = importItems.find(i => i.id === id);
+      if (item) {
+        const div = document.createElement('div');
+        div.textContent = item.label;
+        container.appendChild(div);
+      }
+    });
   }
 
   // Open the risk modal and display MITRE techniques from the CSV
@@ -4538,53 +4558,65 @@
         openImportModal('risques');
       });
     }
-    document.getElementById('add-pp-btn').addEventListener('click', () => {
-      const analysis = analyses[currentIndex];
-      if (!analysis.data) analysis.data = {};
-      if (!analysis.data.pp) analysis.data.pp = [];
-      analysis.data.pp.push({ id: uid(), categorie:'', nom:'', description:'', niveauSSI:0, indiceMenace:0 });
-      saveAnalyses();
-      renderPP();
-    });
-    document.getElementById('add-ss-btn').addEventListener('click', () => {
-      const analysis = analyses[currentIndex];
-      if (!analysis.data) analysis.data = {};
-      if (!analysis.data.ss) analysis.data.ss = [];
-      analysis.data.ss.push({ id: uid(), source:'', objectif:'', vraisemblance:'', gravite:'' });
-      saveAnalyses();
-      renderSS();
-    });
-    document.getElementById('add-so-btn').addEventListener('click', () => {
-      const analysis = analyses[currentIndex];
-      if (!analysis.data) analysis.data = {};
-      if (!analysis.data.so) analysis.data.so = [];
-      analysis.data.so.push({ id: uid(), chemin:'', vraisemblanceGlobale:'' });
-      saveAnalyses();
-      renderSO();
-    });
-    document.getElementById('add-risque-btn').addEventListener('click', () => {
-      const analysis = analyses[currentIndex];
-      if (!analysis.data) analysis.data = {};
-      if (!analysis.data.risques) analysis.data.risques = [];
-      const defaultMission = (analysis.data.missions && analysis.data.missions[0]) ? analysis.data.missions[0].id : '';
-      const defaultEvent = (analysis.data.events && analysis.data.events[0]) ? analysis.data.events[0].id : '';
-      const defaultScenario = (analysis.data.so && analysis.data.so[0]) ? analysis.data.so[0].id : '';
-      analysis.data.risques.push({
-        id: uid(),
-        titre:'',
-        description:'',
-        missionId: defaultMission,
-        eventId: defaultEvent,
-        scenarioId: defaultScenario,
-        sourceIds: [],
-        indice:'',
-        vraisemblance:'',
-        gravite:'',
-        mesures:''
+    const addPPBtn = document.getElementById('add-pp-btn');
+    if (addPPBtn) {
+      addPPBtn.addEventListener('click', () => {
+        const analysis = analyses[currentIndex];
+        if (!analysis.data) analysis.data = {};
+        if (!analysis.data.pp) analysis.data.pp = [];
+        analysis.data.pp.push({ id: uid(), categorie:'', nom:'', description:'', niveauSSI:0, indiceMenace:0 });
+        saveAnalyses();
+        renderPP();
       });
-      saveAnalyses();
-      renderRisques();
-    });
+    }
+    const addSSBtn = document.getElementById('add-ss-btn');
+    if (addSSBtn) {
+      addSSBtn.addEventListener('click', () => {
+        const analysis = analyses[currentIndex];
+        if (!analysis.data) analysis.data = {};
+        if (!analysis.data.ss) analysis.data.ss = [];
+        analysis.data.ss.push({ id: uid(), source:'', objectif:'', vraisemblance:'', gravite:'' });
+        saveAnalyses();
+        renderSS();
+      });
+    }
+    const addSOBtn = document.getElementById('add-so-btn');
+    if (addSOBtn) {
+      addSOBtn.addEventListener('click', () => {
+        const analysis = analyses[currentIndex];
+        if (!analysis.data) analysis.data = {};
+        if (!analysis.data.so) analysis.data.so = [];
+        analysis.data.so.push({ id: uid(), chemin:'', vraisemblanceGlobale:'' });
+        saveAnalyses();
+        renderSO();
+      });
+    }
+    const addRisqueBtn = document.getElementById('add-risque-btn');
+    if (addRisqueBtn) {
+      addRisqueBtn.addEventListener('click', () => {
+        const analysis = analyses[currentIndex];
+        if (!analysis.data) analysis.data = {};
+        if (!analysis.data.risques) analysis.data.risques = [];
+        const defaultMission = (analysis.data.missions && analysis.data.missions[0]) ? analysis.data.missions[0].id : '';
+        const defaultEvent = (analysis.data.events && analysis.data.events[0]) ? analysis.data.events[0].id : '';
+        const defaultScenario = (analysis.data.so && analysis.data.so[0]) ? analysis.data.so[0].id : '';
+        analysis.data.risques.push({
+          id: uid(),
+          titre:'',
+          description:'',
+          missionId: defaultMission,
+          eventId: defaultEvent,
+          scenarioId: defaultScenario,
+          sourceIds: [],
+          indice:'',
+          vraisemblance:'',
+          gravite:'',
+          mesures:''
+        });
+        saveAnalyses();
+        renderRisques();
+      });
+    }
 
     // Cartographie: add new stakeholder row
     const addPPCBtn = document.getElementById('add-ppc-btn');
