@@ -912,6 +912,9 @@ canvas {
   padding: 4px;
   vertical-align: top;
 }
+.nested-table tbody tr {
+  border-bottom: 1px solid var(--border-color);
+}
 .nested-table th {
   background-color: var(--bg-light);
   color: var(--text-primary);

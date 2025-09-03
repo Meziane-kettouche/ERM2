@@ -2774,6 +2774,50 @@
     });
   }
 
+  // Generic helper to add column resizers to a table by id
+  function addDataTableResizers(tableId) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+    const ths = table.querySelectorAll('thead th');
+    const rows = table.querySelectorAll('tbody tr');
+    ths.forEach((th, index) => {
+      if (index === ths.length - 1) return; // skip actions column
+      th.style.position = 'relative';
+      const existing = th.querySelector('.col-resizer');
+      if (existing) th.removeChild(existing);
+      const resizer = document.createElement('div');
+      resizer.className = 'col-resizer';
+      th.appendChild(resizer);
+      resizer.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        const startX = e.clientX;
+        const startWidth = th.offsetWidth;
+        const computedStyle = window.getComputedStyle(th);
+        const minWidth = parseInt(computedStyle.minWidth) || 60;
+        function onMouseMove(ev) {
+          const delta = ev.clientX - startX;
+          let newWidth = startWidth + delta;
+          if (newWidth < minWidth) newWidth = minWidth;
+          th.style.width = newWidth + 'px';
+          th.style.minWidth = newWidth + 'px';
+          rows.forEach(row => {
+            const cell = row.children[index];
+            if (cell) {
+              cell.style.width = newWidth + 'px';
+              cell.style.minWidth = newWidth + 'px';
+            }
+          });
+        }
+        function onMouseUp() {
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+        }
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+    });
+  }
+
   // ----- Atelier 3: Sources de menace
   function renderSS() {
     const listEl = document.getElementById('ss-list');
@@ -3274,6 +3318,7 @@
         delBtn.className = 'delete-action';
         delBtn.textContent = '×';
         delBtn.addEventListener('click', () => {
+          if (!confirm('Supprimer cette action ?')) return;
           entry.actions.splice(aIdx, 1);
           saveAnalyses();
           renderGapActions();
@@ -3300,8 +3345,23 @@
       actTable.appendChild(addRow);
       tdActions.appendChild(actTable);
       tr.appendChild(tdActions);
+      const tdDel = document.createElement('td');
+      const delRow = document.createElement('button');
+      delRow.className = 'delete-item';
+      delRow.textContent = '×';
+      delRow.addEventListener('click', () => {
+        if (!confirm('Supprimer cette exigence ?')) return;
+        const idx = analysis.data.actionsGap.indexOf(entry);
+        if (idx >= 0) analysis.data.actionsGap.splice(idx, 1);
+        saveAnalyses();
+        renderGapActions();
+        renderPlanActions();
+      });
+      tdDel.appendChild(delRow);
+      tr.appendChild(tdDel);
       body.appendChild(tr);
     });
+    addDataTableResizers('gap-actions-table');
   }
 
   // Render actions for supports: allow user to add rows for each selected support
@@ -3413,6 +3473,7 @@
         delBtn.className = 'delete-action';
         delBtn.textContent = '×';
         delBtn.addEventListener('click', () => {
+          if (!confirm('Supprimer cette action ?')) return;
           row.actions.splice(aIdx, 1);
           saveAnalyses();
           renderSupportActions();
@@ -3446,6 +3507,7 @@
       delRow.className = 'delete-item';
       delRow.textContent = '×';
       delRow.addEventListener('click', () => {
+        if (!confirm('Supprimer ce support ?')) return;
         analysis.data.actionsSupports.splice(rowIndex, 1);
         saveAnalyses();
         renderSupportActions();
@@ -3455,6 +3517,7 @@
       tr.appendChild(tdDel);
       body.appendChild(tr);
     });
+    addDataTableResizers('support-actions-table');
     // Add row button is outside in HTML
   }
 
@@ -3559,6 +3622,7 @@
         delBtn.className = 'delete-action';
         delBtn.textContent = '×';
         delBtn.addEventListener('click', () => {
+          if (!confirm('Supprimer cette action ?')) return;
           row.actions.splice(aIdx, 1);
           saveAnalyses();
           renderPartiesActions();
@@ -3592,6 +3656,7 @@
       delRow.className = 'delete-item';
       delRow.textContent = '×';
       delRow.addEventListener('click', () => {
+        if (!confirm('Supprimer cette partie prenante ?')) return;
         analysis.data.actionsParties.splice(rowIndex, 1);
         saveAnalyses();
         renderPartiesActions();
@@ -3601,6 +3666,7 @@
       tr.appendChild(tdDel);
       body.appendChild(tr);
     });
+    addDataTableResizers('parties-actions-table');
   }
 
   // Render actions for risks: show each risk and allow adding actions and residual levels
@@ -3756,6 +3822,7 @@
         delBtn.className = 'delete-action';
         delBtn.textContent = '×';
         delBtn.addEventListener('click', () => {
+          if (!confirm('Supprimer cette action ?')) return;
           row.actions.splice(aIdx, 1);
           saveAnalyses();
           renderRisquesActions();
@@ -3783,8 +3850,23 @@
       actTable.appendChild(addRow);
       tdActions.appendChild(actTable);
       tr.appendChild(tdActions);
+      const tdDel = document.createElement('td');
+      const delRow = document.createElement('button');
+      delRow.className = 'delete-item';
+      delRow.textContent = '×';
+      delRow.addEventListener('click', () => {
+        if (!confirm('Supprimer ce risque ?')) return;
+        const idx = analysis.data.actionsRisques.indexOf(row);
+        if (idx >= 0) analysis.data.actionsRisques.splice(idx, 1);
+        saveAnalyses();
+        renderRisquesActions();
+        renderPlanActions();
+      });
+      tdDel.appendChild(delRow);
+      tr.appendChild(tdDel);
       body.appendChild(tr);
     });
+    addDataTableResizers('risques-actions-table');
   }
 
   // Aggregate all actions and render plan table + gantt chart
@@ -3864,6 +3946,7 @@
       });
       body.appendChild(tr);
     });
+    addDataTableResizers('plan-actions-table');
     // Draw gantt chart
     drawGanttChart(canvas, actions);
   }
