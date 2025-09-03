@@ -846,6 +846,16 @@ canvas {
   font-size: 0.9rem;
   color: var(--text-primary);
 }
+#import-selected {
+  margin-top: 0.5rem;
+  max-height: 100px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 0.4rem;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
 
 /* ----- Import modal list styling (Atelier 5) ----- */
 .import-item {
