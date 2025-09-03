@@ -44,6 +44,8 @@
     try {
       const sel = analyses[currentIndex];
       if (sel && sel.id) {
+        // Save any pending changes and remember the current analysis
+        saveAnalyses();
         localStorage.setItem('ebiosCurrentAnalysisId', sel.id);
       }
     } catch (e) {
@@ -2971,6 +2973,10 @@
           const label = document.createElement('span');
           label.textContent = rk.name;
           tag.appendChild(label);
+          const vLabel = document.createElement('span');
+          vLabel.textContent = 'V:';
+          vLabel.title = 'Vraisemblance';
+          tag.appendChild(vLabel);
           const vSel = document.createElement('select');
           [1,2,3,4].forEach(v => {
             const o = document.createElement('option');
@@ -2987,6 +2993,10 @@
             updateAtelier4Chart();
           };
           tag.appendChild(vSel);
+          const gLabel = document.createElement('span');
+          gLabel.textContent = 'G:';
+          gLabel.title = 'Gravité';
+          tag.appendChild(gLabel);
           const gSel = document.createElement('select');
           [1,2,3,4].forEach(v => {
             const o = document.createElement('option');
