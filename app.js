@@ -56,6 +56,17 @@
     return 'id-' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
   }
 
+  // Map a level (1-4) to a background colour used across ateliers.
+  function levelColor(lvl) {
+    switch (parseInt(lvl, 10)) {
+      case 1: return '#2a9d8f';
+      case 2: return '#e9c46a';
+      case 3: return '#f4a261';
+      case 4: return '#e63946';
+      default: return 'transparent';
+    }
+  }
+
   // ----- Rendering functions
   function renderAnalysisList() {
     const listEl = document.getElementById('analysis-list');
@@ -495,6 +506,7 @@
       delBtn.textContent = '×';
       delBtn.title = 'Supprimer cette valeur';
       delBtn.addEventListener('click', () => {
+        if (!confirm('Supprimer cette mission ?')) return;
         analysis.data.missions.splice(idx, 1);
         // Remove associated events when mission deleted
         if (analysis.data.events) {
@@ -521,8 +533,6 @@
     const ths = table.querySelectorAll('thead th');
     const rows = table.querySelectorAll('tbody tr');
     ths.forEach((th, index) => {
-      // Skip the last column (actions) to avoid resizing it
-      if (index === ths.length - 1) return;
       // Remove any existing resizer to avoid duplicates
       const existing = th.querySelector('.col-resizer');
       if (existing) th.removeChild(existing);
@@ -666,6 +676,7 @@
       delBtn.textContent = '×';
       delBtn.title = 'Supprimer cet évènement';
       delBtn.addEventListener('click', () => {
+        if (!confirm('Supprimer cet évènement ?')) return;
         analysis.data.events.splice(idx, 1);
         saveAnalyses();
         renderEventsTable();
@@ -765,6 +776,7 @@
       delBtn.textContent = '×';
       delBtn.title = 'Supprimer cette exigence';
       delBtn.addEventListener('click', () => {
+        if (!confirm('Supprimer cette exigence ?')) return;
         analysis.data.gap.splice(idx, 1);
         saveAnalyses();
         renderGapTable();
@@ -788,8 +800,6 @@
     const ths = table.querySelectorAll('thead th');
     const rows = table.querySelectorAll('tbody tr');
     ths.forEach((th, index) => {
-      // Skip the last column (actions) to avoid resizing it
-      if (index === ths.length - 1) return;
       // Remove existing resizer to avoid duplicates
       const existing = th.querySelector('.col-resizer');
       if (existing) th.removeChild(existing);
@@ -835,8 +845,6 @@
     const ths = table.querySelectorAll('thead th');
     const rows = table.querySelectorAll('tbody tr');
     ths.forEach((th, index) => {
-      // Skip last column (actions) from resizing
-      if (index === ths.length - 1) return;
       const existing = th.querySelector('.col-resizer');
       if (existing) th.removeChild(existing);
       const resizer = document.createElement('div');
@@ -882,7 +890,6 @@
     const ths = table.querySelectorAll('thead th');
     const rows = table.querySelectorAll('tbody tr');
     ths.forEach((th, index) => {
-      if (index === ths.length - 1) return;
       const existing = th.querySelector('.col-resizer');
       if (existing) th.removeChild(existing);
       const resizer = document.createElement('div');
@@ -928,8 +935,6 @@
     const ths = table.querySelectorAll('thead th');
     const rows = table.querySelectorAll('tbody tr');
     ths.forEach((th, index) => {
-      // skip last column (actions)
-      if (index === ths.length - 1) return;
       const existing = th.querySelector('.col-resizer');
       if (existing) th.removeChild(existing);
       const resizer = document.createElement('div');
@@ -1323,6 +1328,7 @@
         });
         tableBody.appendChild(tr);
       });
+      addDataTableResizers('risk-table');
     }
 
     function updateSelected() {
@@ -1694,6 +1700,7 @@
       delBtn.innerHTML = '×';
       delBtn.title = 'Supprimer cette mission';
       delBtn.addEventListener('click', () => {
+        if (!confirm('Supprimer cette mission ?')) return;
         analysis.data.missions.splice(idx, 1);
         saveAnalyses();
         renderMissions();
@@ -1777,6 +1784,7 @@
       delBtn.innerHTML = '×';
       delBtn.title = 'Supprimer cet évènement';
       delBtn.addEventListener('click', () => {
+        if (!confirm('Supprimer cet évènement ?')) return;
         analysis.data.events.splice(idx, 1);
         saveAnalyses();
         renderEvents();
@@ -2026,6 +2034,7 @@
       delBtn.textContent = '×';
       delBtn.title = 'Supprimer ce couple';
       delBtn.addEventListener('click', () => {
+        if (!confirm('Supprimer ce couple ?')) return;
         analysis.data.srov.splice(idx, 1);
         saveAnalyses();
         renderSROV();
@@ -2065,6 +2074,7 @@
       delBtn.innerHTML = '×';
       delBtn.title = 'Supprimer cette partie prenante';
       delBtn.addEventListener('click', () => {
+        if (!confirm('Supprimer cette partie prenante ?')) return;
         analysis.data.pp.splice(idx, 1);
         saveAnalyses();
         renderPP();
@@ -2382,6 +2392,7 @@
       delBtn.textContent = '×';
       delBtn.title = 'Supprimer cette partie prenante';
       delBtn.addEventListener('click', () => {
+        if (!confirm('Supprimer cette partie prenante ?')) return;
         ppc.splice(idx, 1);
         saveAnalyses();
         renderPPCarto();
@@ -2698,6 +2709,7 @@
       delBtn.textContent = '×';
       delBtn.title = 'Supprimer ce scénario';
       delBtn.addEventListener('click', () => {
+        if (!confirm('Supprimer ce scénario ?')) return;
         strategies.splice(idx, 1);
         saveAnalyses();
         renderStrategies();
@@ -2740,8 +2752,6 @@
     if (!table) return;
     const headers = table.querySelectorAll('th');
     headers.forEach((th, i) => {
-      // Do not add resizer to last column (Actions)
-      if (i === headers.length - 1) return;
       let resizer = th.querySelector('.col-resizer');
       if (!resizer) {
         resizer = document.createElement('div');
@@ -2781,7 +2791,6 @@
     const ths = table.querySelectorAll('thead th');
     const rows = table.querySelectorAll('tbody tr');
     ths.forEach((th, index) => {
-      if (index === ths.length - 1) return; // skip actions column
       th.style.position = 'relative';
       const existing = th.querySelector('.col-resizer');
       if (existing) th.removeChild(existing);
@@ -2835,6 +2844,7 @@
       delBtn.innerHTML = '×';
       delBtn.title = 'Supprimer cette source de menace';
       delBtn.addEventListener('click', () => {
+        if (!confirm('Supprimer cette source de menace ?')) return;
         analysis.data.ss.splice(idx, 1);
         saveAnalyses();
         renderSS();
@@ -2969,6 +2979,7 @@
             rmBtn.textContent = '×';
             rmBtn.title = 'Retirer cette étape';
             rmBtn.addEventListener('click', () => {
+              if (!confirm('Retirer cette étape ?')) return;
               item[stageKey].splice(sIdx, 1);
               saveAnalyses();
               renderSO();
@@ -3012,6 +3023,7 @@
           rm.textContent = '×';
           rm.title = 'Retirer ce risque';
           rm.addEventListener('click', () => {
+            if (!confirm('Retirer ce risque ?')) return;
             item.risks.splice(rIdx, 1);
             saveAnalyses();
             renderSO();
@@ -3074,6 +3086,7 @@
         delBtn.textContent = '×';
         delBtn.title = 'Supprimer ce scénario';
         delBtn.addEventListener('click', () => {
+          if (!confirm('Supprimer ce scénario ?')) return;
           analysis.data.so.splice(idx, 1);
           saveAnalyses();
           renderSO();
@@ -3122,6 +3135,7 @@
         delBtn.innerHTML = '×';
         delBtn.title = 'Supprimer ce scénario';
         delBtn.addEventListener('click', () => {
+          if (!confirm('Supprimer ce scénario ?')) return;
           analysis.data.so.splice(idx, 1);
           saveAnalyses();
           renderSO();
@@ -3160,6 +3174,7 @@
       delBtn.innerHTML = '×';
       delBtn.title = 'Supprimer ce risque';
       delBtn.addEventListener('click', () => {
+        if (!confirm('Supprimer ce risque ?')) return;
         analysis.data.risques.splice(idx, 1);
         saveAnalyses();
         renderRisques();
@@ -3710,9 +3725,11 @@
       tr.appendChild(tdName);
       const tdVr = document.createElement('td');
       tdVr.textContent = risk.vraisemblance;
+      tdVr.style.backgroundColor = levelColor(risk.vraisemblance);
       tr.appendChild(tdVr);
       const tdGr = document.createElement('td');
       tdGr.textContent = risk.gravite;
+      tdGr.style.backgroundColor = levelColor(risk.gravite);
       tr.appendChild(tdGr);
       // Residual vraisemblance select
       const tdResVr = document.createElement('td');
@@ -3725,8 +3742,10 @@
         if (row.residualV == i) opt.selected = true;
         selVr.appendChild(opt);
       }
+      selVr.style.backgroundColor = levelColor(row.residualV || selVr.value);
       selVr.addEventListener('change', (e) => {
         row.residualV = parseInt(e.target.value, 10);
+        e.target.style.backgroundColor = levelColor(row.residualV);
         saveAnalyses();
       });
       tdResVr.appendChild(selVr);
@@ -3742,8 +3761,10 @@
         if (row.residualG == i) opt.selected = true;
         selGr.appendChild(opt);
       }
+      selGr.style.backgroundColor = levelColor(row.residualG || selGr.value);
       selGr.addEventListener('change', (e) => {
         row.residualG = parseInt(e.target.value, 10);
+        e.target.style.backgroundColor = levelColor(row.residualG);
         saveAnalyses();
       });
       tdResGr.appendChild(selGr);
