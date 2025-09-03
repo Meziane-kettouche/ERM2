@@ -997,8 +997,7 @@ canvas {
    2: Chemin stratégique,
    3-6: Kill chain phases (Connaître, Rester, Trouver, Exploiter),
    7: Risques,
-   8: Vraisemblance,
-   9: Gravité.
+   7: Exploiter.
    The last column (Actions) is not explicitly sized. */
 #ops-table th:nth-child(1),
 #ops-table td:nth-child(1) {
@@ -1009,42 +1008,35 @@ canvas {
   min-width: 200px;
 }
 #ops-table th:nth-child(3),
-#ops-table td:nth-child(3),
+#ops-table td:nth-child(3) {
+  min-width: 200px;
+}
 #ops-table th:nth-child(4),
 #ops-table td:nth-child(4),
 #ops-table th:nth-child(5),
 #ops-table td:nth-child(5),
 #ops-table th:nth-child(6),
-#ops-table td:nth-child(6) {
-  min-width: 180px;
-}
+#ops-table td:nth-child(6),
 #ops-table th:nth-child(7),
 #ops-table td:nth-child(7) {
-  min-width: 200px;
-}
-#ops-table th:nth-child(8),
-#ops-table td:nth-child(8),
-#ops-table th:nth-child(9),
-#ops-table td:nth-child(9) {
-  min-width: 80px;
-  text-align: center;
+  min-width: 180px;
 }
 
 /* Hide individual kill chain columns when corresponding class is set */
-#ops-table.hide-connaitre td:nth-child(3),
-#ops-table.hide-connaitre th:nth-child(3) .col-title {
+#ops-table.hide-connaitre td:nth-child(4),
+#ops-table.hide-connaitre th:nth-child(4) .col-title {
   display: none;
 }
-#ops-table.hide-rester td:nth-child(4),
-#ops-table.hide-rester th:nth-child(4) .col-title {
+#ops-table.hide-rester td:nth-child(5),
+#ops-table.hide-rester th:nth-child(5) .col-title {
   display: none;
 }
-#ops-table.hide-trouver td:nth-child(5),
-#ops-table.hide-trouver th:nth-child(5) .col-title {
+#ops-table.hide-trouver td:nth-child(6),
+#ops-table.hide-trouver th:nth-child(6) .col-title {
   display: none;
 }
-#ops-table.hide-exploiter td:nth-child(6),
-#ops-table.hide-exploiter th:nth-child(6) .col-title {
+#ops-table.hide-exploiter td:nth-child(7),
+#ops-table.hide-exploiter th:nth-child(7) .col-title {
   display: none;
 }
 
@@ -1052,6 +1044,9 @@ canvas {
 #ops-table select {
   width: 100%;
   box-sizing: border-box;
+}
+#ops-table .assoc-item select {
+  width: auto;
 }
 
 /* Column toggle icons */

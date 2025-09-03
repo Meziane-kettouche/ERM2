@@ -1256,14 +1256,12 @@
       // Build risk map again to get current levels
       const riskMap = new Map();
       (analysis.data.so || []).forEach(scenario => {
-        const v = scenario.vraisemblance || scenario.vraisemblance;
-        const g = scenario.gravite || scenario.gravité || scenario.grav;
         (scenario.risks || []).forEach(riskObj => {
           const name = riskObj.name || '';
           if (!name) return;
-          const current = riskMap.get(name) || { name, vraisemblance: riskObj.vraisemblance || v || 1, gravite: riskObj.gravite || g || 1 };
-          current.vraisemblance = Math.max(current.vraisemblance, riskObj.vraisemblance || v || 1);
-          current.gravite = Math.max(current.gravite, riskObj.gravite || g || 1);
+          const current = riskMap.get(name) || { name, vraisemblance: riskObj.vraisemblance || 1, gravite: riskObj.gravite || 1 };
+          current.vraisemblance = Math.max(current.vraisemblance, riskObj.vraisemblance || 1);
+          current.gravite = Math.max(current.gravite, riskObj.gravite || 1);
           riskMap.set(name, current);
         });
       });
@@ -1359,7 +1357,7 @@
           const item = mitreLibrary.find(t => t.id === id);
           if (item) {
             const name = item.id + ' ' + item.title;
-            riskModalTarget.risks.push({ name: name, vraisemblance: riskModalTarget.vraisemblance, gravite: riskModalTarget.gravite });
+            riskModalTarget.risks.push({ name: name, vraisemblance: 1, gravite: 1 });
           }
         });
         saveAnalyses();
@@ -2919,9 +2917,6 @@
         if (!Array.isArray(item.trouver)) item.trouver = [];
         if (!Array.isArray(item.exploiter)) item.exploiter = [];
         if (!Array.isArray(item.risks)) item.risks = [];
-        // vraisemblance and gravité levels
-        if (!item.vraisemblance) item.vraisemblance = 1;
-        if (!item.gravite) item.gravite = 1;
         const tr = document.createElement('tr');
         // Event select
         let td = document.createElement('td');
@@ -2964,6 +2959,73 @@
         };
         td.appendChild(pathSelect);
         tr.appendChild(td);
+        // Risks cell (each risk with its own levels)
+        td = document.createElement('td');
+        const riskCell = document.createElement('div');
+        riskCell.className = 'assoc-cell';
+        item.risks.forEach((rk, rIdx) => {
+          if (!rk.vraisemblance) rk.vraisemblance = 1;
+          if (!rk.gravite) rk.gravite = 1;
+          const tag = document.createElement('span');
+          tag.className = 'assoc-item';
+          const label = document.createElement('span');
+          label.textContent = rk.name;
+          tag.appendChild(label);
+          const vSel = document.createElement('select');
+          [1,2,3,4].forEach(v => {
+            const o = document.createElement('option');
+            o.value = v;
+            o.textContent = `${v}`;
+            if (v === rk.vraisemblance) o.selected = true;
+            vSel.appendChild(o);
+          });
+          vSel.style.backgroundColor = levelColor(rk.vraisemblance);
+          vSel.onchange = e => {
+            rk.vraisemblance = parseInt(e.target.value,10);
+            e.target.style.backgroundColor = levelColor(rk.vraisemblance);
+            saveAnalyses();
+            updateAtelier4Chart();
+          };
+          tag.appendChild(vSel);
+          const gSel = document.createElement('select');
+          [1,2,3,4].forEach(v => {
+            const o = document.createElement('option');
+            o.value = v;
+            o.textContent = `${v}`;
+            if (v === rk.gravite) o.selected = true;
+            gSel.appendChild(o);
+          });
+          gSel.style.backgroundColor = levelColor(rk.gravite);
+          gSel.onchange = e => {
+            rk.gravite = parseInt(e.target.value,10);
+            e.target.style.backgroundColor = levelColor(rk.gravite);
+            saveAnalyses();
+          };
+          tag.appendChild(gSel);
+          const rm = document.createElement('button');
+          rm.className = 'remove-assoc';
+          rm.textContent = '×';
+          rm.title = 'Retirer ce risque';
+          rm.addEventListener('click', () => {
+            if (!confirm('Retirer ce risque ?')) return;
+            item.risks.splice(rIdx, 1);
+            saveAnalyses();
+            renderSO();
+          });
+          tag.appendChild(rm);
+          riskCell.appendChild(tag);
+        });
+        const addRiskBtn = document.createElement('button');
+        addRiskBtn.className = 'add-assoc-btn';
+        addRiskBtn.textContent = '+ Ajouter';
+        addRiskBtn.addEventListener('click', () => {
+          // Open the MITRE/OWASP risk selection modal for this scenario
+          openRiskModal(item);
+        });
+        riskCell.appendChild(addRiskBtn);
+        td.appendChild(riskCell);
+        tr.appendChild(td);
+
         // Helper to render kill chain stage cell
         function renderStageCell(stageKey) {
           const cell = document.createElement('td');
@@ -3010,75 +3072,6 @@
         tr.appendChild(renderStageCell('trouver'));
         // Exploiter
         tr.appendChild(renderStageCell('exploiter'));
-        // Risks cell
-        td = document.createElement('td');
-        const riskCell = document.createElement('div');
-        riskCell.className = 'assoc-cell';
-        item.risks.forEach((rk, rIdx) => {
-          const tag = document.createElement('span');
-          tag.className = 'assoc-item';
-          tag.textContent = rk.name;
-          const rm = document.createElement('button');
-          rm.className = 'remove-assoc';
-          rm.textContent = '×';
-          rm.title = 'Retirer ce risque';
-          rm.addEventListener('click', () => {
-            if (!confirm('Retirer ce risque ?')) return;
-            item.risks.splice(rIdx, 1);
-            saveAnalyses();
-            renderSO();
-          });
-          tag.appendChild(rm);
-          riskCell.appendChild(tag);
-        });
-        const addRiskBtn = document.createElement('button');
-        addRiskBtn.className = 'add-assoc-btn';
-        addRiskBtn.textContent = '+ Ajouter';
-        addRiskBtn.addEventListener('click', () => {
-          // Open the MITRE/OWASP risk selection modal for this scenario
-          openRiskModal(item);
-        });
-        riskCell.appendChild(addRiskBtn);
-        td.appendChild(riskCell);
-        tr.appendChild(td);
-        // Vraisemblance select
-        td = document.createElement('td');
-        const vraSelect = document.createElement('select');
-        [1,2,3,4].forEach(v => {
-          const o = document.createElement('option');
-          o.value = v;
-          o.textContent = `${v}`;
-          if (v === item.vraisemblance) o.selected = true;
-          vraSelect.appendChild(o);
-        });
-        vraSelect.style.backgroundColor = levelColor(item.vraisemblance);
-        vraSelect.onchange = (e) => {
-          item.vraisemblance = parseInt(e.target.value, 10);
-          e.target.style.backgroundColor = levelColor(item.vraisemblance);
-          saveAnalyses();
-          updateAtelier4Chart();
-        };
-        td.appendChild(vraSelect);
-        tr.appendChild(td);
-        // Gravité select
-        td = document.createElement('td');
-        const grSelect = document.createElement('select');
-        [1,2,3,4].forEach(v => {
-          const o = document.createElement('option');
-          o.value = v;
-          o.textContent = `${v}`;
-          if (v === item.gravite) o.selected = true;
-          grSelect.appendChild(o);
-        });
-        grSelect.style.backgroundColor = levelColor(item.gravite);
-        grSelect.onchange = (e) => {
-          item.gravite = parseInt(e.target.value, 10);
-          e.target.style.backgroundColor = levelColor(item.gravite);
-          saveAnalyses();
-          updateAtelier4Chart();
-        };
-        td.appendChild(grSelect);
-        tr.appendChild(td);
         // Actions: delete
         td = document.createElement('td');
         const delBtn = document.createElement('button');
@@ -3110,9 +3103,7 @@
             rester: [],
             trouver: [],
             exploiter: [],
-            risks: [],
-            vraisemblance: 1,
-            gravite: 1
+            risks: []
           });
           saveAnalyses();
           renderSO();
@@ -3695,14 +3686,12 @@
     // Gather risks from operational scenarios (atelier 4) for reference
     const riskMap = new Map();
     (analysis.data.so || []).forEach(scenario => {
-      const vs = scenario.vraisemblance || scenario.vraisemblance;
-      const gr = scenario.gravite || scenario.gravité || scenario.grav;
       (scenario.risks || []).forEach(riskObj => {
         const name = riskObj.name || '';
         if (!name) return;
-        const cur = riskMap.get(name) || { name, vraisemblance: riskObj.vraisemblance || vs || 1, gravite: riskObj.gravite || gr || 1 };
-        cur.vraisemblance = Math.max(cur.vraisemblance, riskObj.vraisemblance || vs || 1);
-        cur.gravite = Math.max(cur.gravite, riskObj.gravite || gr || 1);
+        const cur = riskMap.get(name) || { name, vraisemblance: riskObj.vraisemblance || 1, gravite: riskObj.gravite || 1 };
+        cur.vraisemblance = Math.max(cur.vraisemblance, riskObj.vraisemblance || 1);
+        cur.gravite = Math.max(cur.gravite, riskObj.gravite || 1);
         riskMap.set(name, cur);
       });
     });
@@ -4489,12 +4478,14 @@
     const analysis = analyses[currentIndex];
     if (!analysis || !analysis.data) return;
     const ops = analysis.data.so || [];
-    // Count scenarios by their vraisemblance level (1..4).  If no scenarios
-    // exist, the chart will be empty.
+    // Count risks by their vraisemblance level (1..4). If no risks exist,
+    // the chart will be empty.
     const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
     ops.forEach(item => {
-      const lvl = parseInt(item.vraisemblance, 10);
-      if (lvl >= 1 && lvl <= 4) counts[lvl] = (counts[lvl] || 0) + 1;
+      (item.risks || []).forEach(risk => {
+        const lvl = parseInt(risk.vraisemblance, 10);
+        if (lvl >= 1 && lvl <= 4) counts[lvl] = (counts[lvl] || 0) + 1;
+      });
     });
     const labels = ['1','2','3','4'];
     const data = labels.map(l => counts[parseInt(l,10)]);
@@ -4858,8 +4849,16 @@
     const btn = document.getElementById('sidebar-toggle');
     if (!btn) return;
     const sidebar = document.getElementById('sidebar');
+    try {
+      if (localStorage.getItem('ebiosSidebarCollapsed') === '1') {
+        sidebar.classList.add('collapsed');
+      }
+    } catch (e) { /* ignore */ }
     btn.addEventListener('click', () => {
       sidebar.classList.toggle('collapsed');
+      try {
+        localStorage.setItem('ebiosSidebarCollapsed', sidebar.classList.contains('collapsed') ? '1' : '0');
+      } catch (e) { /* ignore */ }
     });
   }
 
