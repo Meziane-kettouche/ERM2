@@ -622,15 +622,20 @@
     if (!Array.isArray(analysis.data.supportsQualif)) analysis.data.supportsQualif = [];
     // Ensure supports from missions exist
     const existingNames = analysis.data.supportsQualif.map(s => s.name);
+    let added = false;
     (analysis.data.missions || []).forEach(m => {
       (m.supports || []).forEach(s => {
         const name = s.name || '';
         if (name && !existingNames.includes(name)) {
           analysis.data.supportsQualif.push({ name, description: s.description || '', vulnerabilities: [] });
           existingNames.push(name);
+          added = true;
         }
       });
     });
+    if (added) {
+      saveAnalyses();
+    }
     analysis.data.supportsQualif.forEach((support, idx) => {
       const tr = document.createElement('tr');
       // name
@@ -4925,6 +4930,13 @@
         if (!Array.isArray(analysis.data.supportsQualif)) analysis.data.supportsQualif = [];
         analysis.data.supportsQualif.push({ name:'', description:'', vulnerabilities: [] });
         saveAnalyses();
+        renderSupportsQualifTable();
+        renderSupportActions();
+      });
+    }
+    const refreshSupportsQualifBtn = document.getElementById('refresh-supports-qualif-btn');
+    if (refreshSupportsQualifBtn) {
+      refreshSupportsQualifBtn.addEventListener('click', () => {
         renderSupportsQualifTable();
         renderSupportActions();
       });
