@@ -1001,9 +1001,56 @@
   // Mitigation Name, Mitigation Description.  Additional columns will be
   // ignored.  Rows with the same technique ID will be grouped.
   function parseMitreCsv(text) {
-    const lines = text.split(/\r?\n/);
-    if (lines.length < 2) return [];
-    const header = lines[0].split(',');
+    // Split the CSV text into logical rows while honouring quoted newlines
+    function splitRows(str) {
+      const rows = [];
+      let cur = '';
+      let inQuotes = false;
+      for (let i = 0; i < str.length; i++) {
+        const c = str[i];
+        if (c === '"') {
+          if (inQuotes && str[i + 1] === '"') { cur += '"'; i++; }
+          else { inQuotes = !inQuotes; cur += c; }
+          continue;
+        }
+        if ((c === '\n' || c === '\r') && !inQuotes) {
+          if (c === '\r' && str[i + 1] === '\n') i++;
+          rows.push(cur);
+          cur = '';
+          continue;
+        }
+        cur += c;
+      }
+      if (cur) rows.push(cur);
+      return rows;
+    }
+
+    // Split a row into columns handling quoted commas
+    function splitCols(row) {
+      const cols = [];
+      let cur = '';
+      let inQuotes = false;
+      for (let i = 0; i < row.length; i++) {
+        const c = row[i];
+        if (c === '"') {
+          if (inQuotes && row[i + 1] === '"') { cur += '"'; i++; }
+          else inQuotes = !inQuotes;
+          continue;
+        }
+        if (c === ',' && !inQuotes) {
+          cols.push(cur);
+          cur = '';
+          continue;
+        }
+        cur += c;
+      }
+      cols.push(cur);
+      return cols;
+    }
+
+    const rows = splitRows(text);
+    if (rows.length < 2) return [];
+    const header = splitCols(rows[0]);
     const idIndex = header.findIndex(h => /technique id/i.test(h));
     const nameIndex = header.findIndex(h => /technique name/i.test(h));
     const descIndex = header.findIndex(h => /technique description/i.test(h));
@@ -1011,17 +1058,15 @@
     const mitNameIndex = header.findIndex(h => /mitigation name/i.test(h));
     const mitDescIndex = header.findIndex(h => /mitigation description/i.test(h));
     const map = new Map();
-    for (let i = 1; i < lines.length; i++) {
-      const row = lines[i];
-      if (!row.trim()) continue;
-      // naive CSV split (does not handle quoted commas)
-      const cols = row.split(',');
+    for (let i = 1; i < rows.length; i++) {
+      if (!rows[i].trim()) continue;
+      const cols = splitCols(rows[i]);
       const tid = cols[idIndex] ? cols[idIndex].trim() : '';
       const tname = cols[nameIndex] ? cols[nameIndex].trim() : '';
-      const tdesc = cols[descIndex] ? cols[descIndex].trim() : '';
+      const tdesc = cols[descIndex] ? cols[descIndex].replace(/\s+/g, ' ').trim() : '';
       const mid = cols[mitIdIndex] ? cols[mitIdIndex].trim() : '';
       const mname = cols[mitNameIndex] ? cols[mitNameIndex].trim() : '';
-      const mdesc = cols[mitDescIndex] ? cols[mitDescIndex].trim() : '';
+      const mdesc = cols[mitDescIndex] ? cols[mitDescIndex].replace(/\s+/g, ' ').trim() : '';
       if (!tid) continue;
       if (!map.has(tid)) {
         map.set(tid, { id: tid, title: tname, description: tdesc, mitigations: [] });
