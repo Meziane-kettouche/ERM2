@@ -379,17 +379,19 @@
       addExistingBtn.className = 'add-support-btn';
       addExistingBtn.textContent = '+ Support existant';
       addExistingBtn.addEventListener('click', () => {
-        // Collect all unique supports across missions
+        // Collect all unique supports across missions and vulnerability table
         const allSupports = [];
-        analysis.data.missions.forEach(m2 => {
-          (m2.supports || []).forEach(s => {
-            const name = (s.name || '').trim();
-            if (!name) return;
-            if (!allSupports.some(ss => ss.name === name)) {
-              allSupports.push({ name: name, description: s.description || '', responsable: s.responsable || '' });
-            }
-          });
+        const addUnique = (s) => {
+          const name = (s.name || '').trim();
+          if (!name) return;
+          if (!allSupports.some(ss => ss.name === name)) {
+            allSupports.push({ name: name, description: s.description || '', responsable: s.responsable || '' });
+          }
+        };
+        (analysis.data.missions || []).forEach(m2 => {
+          (m2.supports || []).forEach(addUnique);
         });
+        (analysis.data.supportsQualif || []).forEach(addUnique);
         // Exclude supports already associated with the current mission
         const currentNames = mission.supports.map(s => (s.name || '').trim());
         const available = allSupports.filter(s => !currentNames.includes(s.name));
@@ -596,7 +598,9 @@
         color = '#f4a261';
         break;
       case 'forte':
-        color = '#e76f51';
+      case 'fort':
+        color = '#8b0000';
+        selectEl.style.color = '#fff';
         break;
       case 'critique':
         color = '#000';
@@ -605,7 +609,7 @@
       default:
         selectEl.style.color = '';
     }
-    if (lvl !== 'critique') selectEl.style.color = '';
+    if (lvl !== 'critique' && lvl !== 'forte' && lvl !== 'fort') selectEl.style.color = '';
     selectEl.style.backgroundColor = color;
   }
 
@@ -618,15 +622,18 @@
     if (!Array.isArray(analysis.data.supportsQualif)) analysis.data.supportsQualif = [];
     // Ensure supports from missions exist
     const existingNames = analysis.data.supportsQualif.map(s => s.name);
+    let added = false;
     (analysis.data.missions || []).forEach(m => {
       (m.supports || []).forEach(s => {
         const name = s.name || '';
         if (name && !existingNames.includes(name)) {
           analysis.data.supportsQualif.push({ name, description: s.description || '', vulnerabilities: [] });
           existingNames.push(name);
+          added = true;
         }
       });
     });
+    if (added) saveAnalyses();
     analysis.data.supportsQualif.forEach((support, idx) => {
       const tr = document.createElement('tr');
       // name
@@ -4922,6 +4929,15 @@
         analysis.data.supportsQualif.push({ name:'', description:'', vulnerabilities: [] });
         saveAnalyses();
         renderSupportsQualifTable();
+        renderSupportActions();
+      });
+    }
+    const refreshSupportQualifBtn = document.getElementById('refresh-support-qualif-btn');
+    if (refreshSupportQualifBtn) {
+      refreshSupportQualifBtn.addEventListener('click', () => {
+        renderSupportsQualifTable();
+        renderSupportActions();
+        saveAnalyses();
       });
     }
     // GAP analysis: add new requirement
