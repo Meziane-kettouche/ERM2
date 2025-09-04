@@ -316,6 +316,7 @@
       const supportsCell = document.createElement('div');
       supportsCell.className = 'supports-cell';
       mission.supports.forEach((support, sIdx) => {
+        if (!support.id) support.id = uid();
         const sItem = document.createElement('div');
         sItem.className = 'support-item';
         const nameInput = document.createElement('input');
@@ -326,6 +327,7 @@
           support.name = e.target.value;
           saveAnalyses();
           renderSupportsQualifTable();
+          renderSupportActions();
           updateAtelier1Graph();
         };
         const supDescInput = document.createElement('textarea');
@@ -367,7 +369,7 @@
       addSupBtn.className = 'add-support-btn';
       addSupBtn.textContent = '+ Support';
       addSupBtn.addEventListener('click', () => {
-        mission.supports.push({ name: '', description: '', responsable: '' });
+        mission.supports.push({ id: uid(), name: '', description: '', responsable: '' });
         saveAnalyses();
         renderMissionsTable();
         renderSupportsQualifTable();
@@ -385,7 +387,8 @@
           const name = (s.name || '').trim();
           if (!name) return;
           if (!allSupports.some(ss => ss.name === name)) {
-            allSupports.push({ name: name, description: s.description || '', responsable: s.responsable || '' });
+            const id = s.id || s.refId;
+            allSupports.push({ id: id, name: name, description: s.description || '', responsable: s.responsable || '' });
           }
         };
         (analysis.data.missions || []).forEach(m2 => {
@@ -620,22 +623,50 @@
     const analysis = analyses[currentIndex];
     if (!analysis.data) analysis.data = {};
     if (!Array.isArray(analysis.data.supportsQualif)) analysis.data.supportsQualif = [];
-    // Ensure supports from missions exist
-    const existingNames = analysis.data.supportsQualif.map(s => s.name);
-    let added = false;
+
+    // Synchronize supports from missions to avoid duplicates when editing
+    const sq = analysis.data.supportsQualif;
+    const validIds = new Set();
+    let changed = false;
     (analysis.data.missions || []).forEach(m => {
       (m.supports || []).forEach(s => {
-        const name = s.name || '';
-        if (name && !existingNames.includes(name)) {
-          analysis.data.supportsQualif.push({ name, description: s.description || '', vulnerabilities: [] });
-          existingNames.push(name);
-          added = true;
+        if (!s.id) { s.id = uid(); changed = true; }
+        validIds.add(s.id);
+        let entry = sq.find(e => e.refId === s.id);
+        if (entry) {
+          if (entry.name !== (s.name || '') || entry.description !== (s.description || '') || entry.responsable !== (s.responsable || '')) {
+            entry.name = s.name || '';
+            entry.description = s.description || '';
+            entry.responsable = s.responsable || '';
+            changed = true;
+          }
+        } else {
+          sq.push({ refId: s.id, name: s.name || '', description: s.description || '', responsable: s.responsable || '', vulnerabilities: [] });
+          changed = true;
         }
       });
     });
-    if (added) {
-      saveAnalyses();
+    // Remove supports that no longer exist in missions
+    for (let i = sq.length - 1; i >= 0; i--) {
+      const entry = sq[i];
+      if (entry.refId && !validIds.has(entry.refId)) {
+        sq.splice(i, 1);
+        changed = true;
+      }
     }
+    // Deduplicate by name
+    const seenNames = new Set();
+    for (let i = sq.length - 1; i >= 0; i--) {
+      const n = sq[i].name || '';
+      if (seenNames.has(n)) {
+        sq.splice(i, 1);
+        changed = true;
+      } else {
+        seenNames.add(n);
+      }
+    }
+    if (changed) saveAnalyses();
+
     analysis.data.supportsQualif.forEach((support, idx) => {
       const tr = document.createElement('tr');
       // name
@@ -661,6 +692,17 @@
         saveAnalyses();
       };
       td.appendChild(descInput);
+      tr.appendChild(td);
+      // responsable
+      td = document.createElement('td');
+      const respInput = document.createElement('input');
+      respInput.type = 'text';
+      respInput.value = support.responsable || '';
+      respInput.oninput = (e) => {
+        support.responsable = e.target.value;
+        saveAnalyses();
+      };
+      td.appendChild(respInput);
       tr.appendChild(td);
       // vulnerabilities
       td = document.createElement('td');
@@ -1469,7 +1511,7 @@
       if (!Array.isArray(analysis.data.actionsSupports)) analysis.data.actionsSupports = [];
       importSelections.forEach(name => {
         if (!analysis.data.actionsSupports.some(row => row.supportName === name)) {
-          analysis.data.actionsSupports.push({ supportName: name, vulnName: '', actions: [] });
+          analysis.data.actionsSupports.push({ supportName: name, vulnName: '', initialLevel: '', residualLevel: '', actions: [] });
         }
       });
       saveAnalyses();
@@ -1480,8 +1522,11 @@
         const parts = id.split('||');
         const supportName = parts[0] || '';
         const vulnName = parts[1] || '';
+        const support = (analysis.data.supportsQualif || []).find(s => s.name === supportName);
+        const vuln = support ? (support.vulnerabilities || []).find(v => v.name === vulnName) : null;
+        const lvl = vuln ? (vuln.level || '') : '';
         if (!analysis.data.actionsSupports.some(row => row.supportName === supportName && row.vulnName === vulnName)) {
-          analysis.data.actionsSupports.push({ supportName, vulnName, actions: [] });
+          analysis.data.actionsSupports.push({ supportName, vulnName, initialLevel: lvl, residualLevel: lvl, actions: [] });
         }
       });
       saveAnalyses();
@@ -3678,9 +3723,19 @@
       selV.className = 'form-select';
       const supportObj = (analysis.data.supportsQualif || []).find(s => s.name === row.supportName);
       const vulnOpts = supportObj ? (supportObj.vulnerabilities || []) : [];
+      if (row.vulnName && !row.initialLevel) {
+        const vObj = vulnOpts.find(v => v.name === row.vulnName);
+        if (vObj) {
+          row.initialLevel = vObj.level || '';
+          if (!row.residualLevel) row.residualLevel = row.initialLevel;
+        }
+      }
       selV.innerHTML = '<option value="">--Sélectionner--</option>' + vulnOpts.map(v => `<option value="${v.name}" ${row.vulnName===v.name?'selected':''}>${v.name}</option>`).join('');
       selV.addEventListener('change', (e) => {
         row.vulnName = e.target.value;
+        const vObj = vulnOpts.find(v => v.name === row.vulnName);
+        row.initialLevel = vObj ? (vObj.level || '') : '';
+        row.residualLevel = row.initialLevel;
         saveAnalyses();
         renderSupportActions();
         renderPlanActions();
@@ -3696,12 +3751,47 @@
         row.supportName = e.target.value;
         // reset vuln if support changed
         row.vulnName = '';
+        row.initialLevel = '';
+        row.residualLevel = '';
         saveAnalyses();
         renderSupportActions();
         renderPlanActions();
       });
       tdSupport.appendChild(sel);
       tr.appendChild(tdSupport);
+      // Initial level
+      const tdInit = document.createElement('td');
+      const initSel = document.createElement('select');
+      ['info','faible','moderee','forte','critique'].forEach(optVal => {
+        const opt = document.createElement('option');
+        opt.value = optVal;
+        opt.textContent = optVal.charAt(0).toUpperCase() + optVal.slice(1);
+        if ((row.initialLevel || '') === optVal) opt.selected = true;
+        initSel.appendChild(opt);
+      });
+      initSel.disabled = true;
+      setVulnLevelColor(initSel);
+      tdInit.appendChild(initSel);
+      tr.appendChild(tdInit);
+      // Residual level
+      const tdRes = document.createElement('td');
+      const resSel = document.createElement('select');
+      ['info','faible','moderee','forte','critique'].forEach(optVal => {
+        const opt = document.createElement('option');
+        opt.value = optVal;
+        opt.textContent = optVal.charAt(0).toUpperCase() + optVal.slice(1);
+        if ((row.residualLevel || '') === optVal) opt.selected = true;
+        resSel.appendChild(opt);
+      });
+      setVulnLevelColor(resSel);
+      resSel.addEventListener('change', (e) => {
+        row.residualLevel = e.target.value;
+        saveAnalyses();
+        setVulnLevelColor(resSel);
+        renderPlanActions();
+      });
+      tdRes.appendChild(resSel);
+      tr.appendChild(tdRes);
       // Actions cell
       const tdActions = document.createElement('td');
       tdActions.className = 'assoc-cell';
@@ -4928,7 +5018,7 @@
         const analysis = analyses[currentIndex];
         if (!analysis.data) analysis.data = {};
         if (!Array.isArray(analysis.data.supportsQualif)) analysis.data.supportsQualif = [];
-        analysis.data.supportsQualif.push({ name:'', description:'', vulnerabilities: [] });
+        analysis.data.supportsQualif.push({ name:'', description:'', responsable:'', vulnerabilities: [] });
         saveAnalyses();
         renderSupportsQualifTable();
         renderSupportActions();
@@ -5036,7 +5126,7 @@
         const analysis = analyses[currentIndex];
         if (!analysis.data) analysis.data = {};
         if (!Array.isArray(analysis.data.actionsSupports)) analysis.data.actionsSupports = [];
-        analysis.data.actionsSupports.push({ supportName: '', vulnName: '', actions: [] });
+        analysis.data.actionsSupports.push({ supportName: '', vulnName: '', initialLevel: '', residualLevel: '', actions: [] });
         saveAnalyses();
         renderSupportActions();
       });
