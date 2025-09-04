@@ -4615,6 +4615,74 @@
     }
   }
 
+  function drawRiskMatrix(canvas, risks) {
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    // Fill dark background
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg-panel') || '#0c1524';
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, width, height);
+    const cellW = width / 4;
+    const cellH = height / 4;
+    const colors = [
+      ['#1B8060', '#F38E00', '#F38E00', '#F43B3B'],
+      ['#1B8060', '#F38E00', '#F38E00', '#F43B3B'],
+      ['#1B8060', '#F38E00', '#F43B3B', '#F43B3B'],
+      ['#F38E00', '#F38E00', '#F43B3B', '#F43B3B']
+    ];
+    // Draw grid
+    for (let g = 1; g <= 4; g++) {
+      for (let v = 1; v <= 4; v++) {
+        const row = 4 - g;
+        const x = (v - 1) * cellW;
+        const y = row * cellH;
+        ctx.fillStyle = colors[g - 1][v - 1];
+        ctx.fillRect(x, y, cellW, cellH);
+        ctx.strokeStyle = 'white';
+        ctx.strokeRect(x, y, cellW, cellH);
+      }
+    }
+    // Group risks by cell
+    const cellMap = {};
+    risks.forEach(r => {
+      const v = parseInt(r.vraisemblance, 10);
+      const g = parseInt(r.gravite, 10);
+      if (!v || !g) return;
+      const key = `${v}-${g}`;
+      if (!cellMap[key]) cellMap[key] = [];
+      cellMap[key].push(r.name || '');
+    });
+    ctx.fillStyle = 'white';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    Object.entries(cellMap).forEach(([key, names]) => {
+      const [v, g] = key.split('-').map(Number);
+      const row = 4 - g;
+      const x = (v - 1) * cellW + cellW / 2;
+      const y = row * cellH + cellH / 2;
+      ctx.fillText(names.join(', '), x, y);
+    });
+    // Axis labels
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    for (let v = 1; v <= 4; v++) {
+      const x = (v - 0.5) * cellW;
+      ctx.fillText(String(v), x, height - 8);
+    }
+    ctx.textAlign = 'left';
+    for (let g = 1; g <= 4; g++) {
+      const y = (4 - g + 0.5) * cellH;
+      ctx.fillText(String(g), 4, y);
+    }
+    ctx.save();
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText('Gravité', -height / 2, 12);
+    ctx.restore();
+    ctx.fillText('Vraisemblance', width / 2, height - 20);
+  }
+
   // ----- Chart updates per atelier
   function updateAtelier1Chart() {
     // The bar chart for Atelier 1 has been replaced by a network graph.
@@ -4956,30 +5024,14 @@
     const analysis = analyses[currentIndex];
     if (!analysis || !analysis.data) return;
     const ops = analysis.data.so || [];
-    // Count risks by their vraisemblance level (1..4). If no risks exist,
-    // the chart will be empty.
-    const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+    const risks = [];
     ops.forEach(item => {
-      (item.risks || []).forEach(risk => {
-        const lvl = parseInt(risk.vraisemblance, 10);
-        if (lvl >= 1 && lvl <= 4) counts[lvl] = (counts[lvl] || 0) + 1;
-      });
+      (item.risks || []).forEach(r => risks.push(r));
     });
-    const labels = ['1','2','3','4'];
-    const data = labels.map(l => counts[parseInt(l,10)]);
-    // Colours based on level for each bar
-    const levelColor = (lvl) => {
-      switch (parseInt(lvl, 10)) {
-        case 1: return '#2a9d8f';
-        case 2: return '#e9c46a';
-        case 3: return '#f4a261';
-        case 4: return '#e63946';
-        default: return 'rgba(77,163,255,0.8)';
-      }
-    };
-    const colors = labels.map(l => levelColor(l));
     const canvas = document.getElementById('atelier4-chart');
-    drawBarChart(canvas, labels, data, colors);
+    if (canvas) {
+      drawRiskMatrix(canvas, risks);
+    }
   }
 
   function updateAtelier5Chart() {
