@@ -78,35 +78,23 @@
               </table>
               <button id="add-mission-btn" class="add-item-btn">+ Ajouter une valeur</button>
 
-              <h2>Qualification des biens supports</h2>
-              <p>Liste des biens supports et des vulnérabilités associées.</p>
-              <table id="supports-qualif-table" class="data-table">
-                <thead>
-                  <tr>
-                    <th>Bien support</th>
-                    <th>Description</th>
-                    <th>Vulnérabilités</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="supports-qualif-body"></tbody>
-              </table>
-              <button id="add-support-qualif-btn" class="add-item-btn">+ Ajouter un bien support</button>
             </div>
             <div id="atelier1-vuln-tab" class="atelier1-subtab-content">
               <h2>Vulnérabilité des biens supports</h2>
               <p>Liste des biens supports et des vulnérabilités associées.</p>
-              <table id="supports-qualif-table" class="data-table">
-                <thead>
-                  <tr>
-                    <th>Bien support</th>
-                    <th>Description</th>
-                    <th>Vulnérabilités</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="supports-qualif-body"></tbody>
-              </table>
+              <div class="table-container" style="overflow-x:auto;">
+                <table id="supports-qualif-table" class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Bien support</th>
+                      <th>Description</th>
+                      <th>Vulnérabilités</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="supports-qualif-body"></tbody>
+                </table>
+              </div>
               <button id="add-support-qualif-btn" class="add-item-btn">+ Ajouter un bien support</button>
             </div>
             <!-- Sub‑tab: GAP analysis -->
