@@ -41,10 +41,11 @@
       <!-- Atelier 1 : Mission et valeurs et GAP Analysis -->
       <section id="atelier1" class="tab-content active">
         <h2>Atelier 1 – Mission et valeurs</h2>
-        <!-- Sub‑tab navigation: mission/valeurs vs GAP analysis -->
+        <!-- Sub‑tab navigation: mission/valeurs, GAP analysis et vulnérabilités -->
         <div class="subtab-nav" id="atelier1-subtabs">
           <button class="atelier1-subtab-btn active" data-subtab="values">Mission & Valeurs</button>
           <button class="atelier1-subtab-btn" data-subtab="gap">GAP Analysis</button>
+          <button class="atelier1-subtab-btn" data-subtab="vuln">Vulnérabilité Bien support</button>
         </div>
         <!-- Graph area: network graph for mission/valeurs will appear here.  The
              GAP analysis diagram is drawn dynamically in the GAP tab. -->
@@ -76,6 +77,22 @@
                 <tbody id="missions-body"></tbody>
               </table>
               <button id="add-mission-btn" class="add-item-btn">+ Ajouter une valeur</button>
+            </div>
+            <div id="atelier1-vuln-tab" class="atelier1-subtab-content">
+              <h2>Vulnérabilité des biens supports</h2>
+              <p>Liste des biens supports et des vulnérabilités associées.</p>
+              <table id="supports-qualif-table" class="data-table">
+                <thead>
+                  <tr>
+                    <th>Bien support</th>
+                    <th>Description</th>
+                    <th>Vulnérabilités</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="supports-qualif-body"></tbody>
+              </table>
+              <button id="add-support-qualif-btn" class="add-item-btn">+ Ajouter un bien support</button>
             </div>
             <!-- Sub‑tab: GAP analysis -->
             <div id="atelier1-gap-tab" class="atelier1-subtab-content">

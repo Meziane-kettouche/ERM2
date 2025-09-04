@@ -325,6 +325,7 @@
         nameInput.oninput = (e) => {
           support.name = e.target.value;
           saveAnalyses();
+          renderSupportsQualifTable();
           updateAtelier1Graph();
         };
         const supDescInput = document.createElement('textarea');
@@ -335,6 +336,7 @@
         supDescInput.oninput = (e) => {
           support.description = e.target.value;
           saveAnalyses();
+          renderSupportsQualifTable();
         };
         const supRespInput = document.createElement('input');
         supRespInput.type = 'text';
@@ -343,6 +345,7 @@
         supRespInput.oninput = (e) => {
           support.responsable = e.target.value;
           saveAnalyses();
+          renderSupportsQualifTable();
         };
         const rmBtn = document.createElement('button');
         rmBtn.textContent = '×';
@@ -351,6 +354,7 @@
           mission.supports.splice(sIdx, 1);
           saveAnalyses();
           renderMissionsTable();
+          renderSupportsQualifTable();
           updateAtelier1Graph();
         });
         sItem.appendChild(nameInput);
@@ -366,6 +370,7 @@
         mission.supports.push({ name: '', description: '', responsable: '' });
         saveAnalyses();
         renderMissionsTable();
+        renderSupportsQualifTable();
         updateAtelier1Graph();
       });
       supportsCell.appendChild(addSupBtn);
@@ -403,6 +408,7 @@
           mission.supports.push(selected);
           saveAnalyses();
           renderMissionsTable();
+          renderSupportsQualifTable();
           updateAtelier1Graph();
         }
       });
@@ -516,6 +522,7 @@
         }
         saveAnalyses();
         renderMissionsTable();
+        renderSupportsQualifTable();
         updateAtelier1Graph();
       });
       td.appendChild(delBtn);
@@ -524,6 +531,7 @@
     });
     // After rendering rows, set up resizable columns on the missions table
     addMissionTableResizers();
+    renderSupportsQualifTable();
   }
 
   // Add resizer handles to the header of the missions table.  Users
@@ -571,6 +579,164 @@
         document.addEventListener('mouseup', onMouseUp);
       });
     });
+  }
+
+  // ----- Atelier 1: Qualification des biens supports -----
+  function setVulnLevelColor(selectEl) {
+    const lvl = (selectEl.value || '').toLowerCase();
+    let color = '#ccc';
+    switch (lvl) {
+      case 'info':
+        color = '#6c757d';
+        break;
+      case 'faible':
+        color = '#f9e79f';
+        break;
+      case 'moderee':
+        color = '#f4a261';
+        break;
+      case 'forte':
+        color = '#e76f51';
+        break;
+      case 'critique':
+        color = '#000';
+        selectEl.style.color = '#fff';
+        break;
+      default:
+        selectEl.style.color = '';
+    }
+    if (lvl !== 'critique') selectEl.style.color = '';
+    selectEl.style.backgroundColor = color;
+  }
+
+  function renderSupportsQualifTable() {
+    const tbody = document.getElementById('supports-qualif-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    const analysis = analyses[currentIndex];
+    if (!analysis.data) analysis.data = {};
+    if (!Array.isArray(analysis.data.supportsQualif)) analysis.data.supportsQualif = [];
+    // Ensure supports from missions exist
+    const existingNames = analysis.data.supportsQualif.map(s => s.name);
+    (analysis.data.missions || []).forEach(m => {
+      (m.supports || []).forEach(s => {
+        const name = s.name || '';
+        if (name && !existingNames.includes(name)) {
+          analysis.data.supportsQualif.push({ name, description: s.description || '', vulnerabilities: [] });
+          existingNames.push(name);
+        }
+      });
+    });
+    analysis.data.supportsQualif.forEach((support, idx) => {
+      const tr = document.createElement('tr');
+      // name
+      let td = document.createElement('td');
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.value = support.name || '';
+      nameInput.oninput = (e) => {
+        support.name = e.target.value;
+        saveAnalyses();
+        renderSupportActions();
+      };
+      td.appendChild(nameInput);
+      tr.appendChild(td);
+      // description
+      td = document.createElement('td');
+      const descInput = document.createElement('textarea');
+      descInput.rows = 2;
+      descInput.style.width = '100%';
+      descInput.value = support.description || '';
+      descInput.oninput = (e) => {
+        support.description = e.target.value;
+        saveAnalyses();
+      };
+      td.appendChild(descInput);
+      tr.appendChild(td);
+      // vulnerabilities
+      td = document.createElement('td');
+      const vulnDiv = document.createElement('div');
+      vulnDiv.className = 'vuln-cell';
+      if (!Array.isArray(support.vulnerabilities)) support.vulnerabilities = [];
+      support.vulnerabilities.forEach((v, vIdx) => {
+        const vItem = document.createElement('div');
+        vItem.className = 'vuln-item';
+        const vName = document.createElement('input');
+        vName.type = 'text';
+        vName.placeholder = 'Nom';
+        vName.value = v.name || '';
+        vName.oninput = (e) => {
+          v.name = e.target.value;
+          saveAnalyses();
+          renderSupportActions();
+        };
+        const vDesc = document.createElement('textarea');
+        vDesc.rows = 2;
+        vDesc.placeholder = 'Description';
+        vDesc.value = v.description || '';
+        vDesc.oninput = (e) => {
+          v.description = e.target.value;
+          saveAnalyses();
+        };
+        const vLevel = document.createElement('select');
+        ['info','faible','moderee','forte','critique'].forEach(optVal => {
+          const opt = document.createElement('option');
+          opt.value = optVal;
+          opt.textContent = optVal.charAt(0).toUpperCase() + optVal.slice(1);
+          if ((v.level || '') === optVal) opt.selected = true;
+          vLevel.appendChild(opt);
+        });
+        setVulnLevelColor(vLevel);
+        vLevel.onchange = (e) => {
+          v.level = e.target.value;
+          saveAnalyses();
+          setVulnLevelColor(vLevel);
+        };
+        const rmV = document.createElement('button');
+        rmV.textContent = '×';
+        rmV.title = 'Supprimer cette vulnérabilité';
+        rmV.addEventListener('click', () => {
+          support.vulnerabilities.splice(vIdx, 1);
+          saveAnalyses();
+          renderSupportsQualifTable();
+          renderSupportActions();
+        });
+        vItem.appendChild(vName);
+        vItem.appendChild(vDesc);
+        vItem.appendChild(vLevel);
+        vItem.appendChild(rmV);
+        vulnDiv.appendChild(vItem);
+      });
+      const addVBtn = document.createElement('button');
+      addVBtn.className = 'add-support-btn';
+      addVBtn.textContent = '+ Vulnérabilité';
+      addVBtn.addEventListener('click', () => {
+        support.vulnerabilities.push({ name:'', description:'', level:'info' });
+        saveAnalyses();
+        renderSupportsQualifTable();
+        renderSupportActions();
+      });
+      vulnDiv.appendChild(addVBtn);
+      td.appendChild(vulnDiv);
+      tr.appendChild(td);
+      // actions
+      td = document.createElement('td');
+      const delSup = document.createElement('button');
+      delSup.className = 'delete-item';
+      delSup.textContent = '×';
+      delSup.title = 'Supprimer ce bien support';
+      delSup.addEventListener('click', () => {
+        if (!confirm('Supprimer ce bien support ?')) return;
+        analysis.data.supportsQualif.splice(idx, 1);
+        saveAnalyses();
+        renderSupportsQualifTable();
+        renderSupportActions();
+      });
+      td.appendChild(delSup);
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+    });
+    addDataTableResizers('supports-qualif-table');
   }
 
   // ----- Atelier 1: Évènements (table rendering)
@@ -1133,6 +1299,9 @@
       case 'supports':
         titleEl.textContent = 'Importer des supports';
         break;
+      case 'vulns':
+        titleEl.textContent = 'Importer des vulnérabilités';
+        break;
       case 'parties':
         titleEl.textContent = 'Importer des parties';
         break;
@@ -1173,6 +1342,13 @@
       });
       supportsMap.forEach((obj) => {
         items.push({ id: obj.name, label: obj.name, desc: obj.desc || '', extra: obj.resp || '' });
+      });
+    } else if (type === 'vulns') {
+      (analysis.data.supportsQualif || []).forEach(s => {
+        (s.vulnerabilities || []).forEach(v => {
+          const id = `${s.name}||${v.name}`;
+          items.push({ id, label: v.name || 'Vulnérabilité', desc: v.description || '', extra: s.name || '' });
+        });
       });
     } else if (type === 'parties') {
       (analysis.data.ppc || []).forEach(pp => {
@@ -1284,7 +1460,19 @@
       if (!Array.isArray(analysis.data.actionsSupports)) analysis.data.actionsSupports = [];
       importSelections.forEach(name => {
         if (!analysis.data.actionsSupports.some(row => row.supportName === name)) {
-          analysis.data.actionsSupports.push({ supportName: name, actions: [] });
+          analysis.data.actionsSupports.push({ supportName: name, vulnName: '', actions: [] });
+        }
+      });
+      saveAnalyses();
+      renderSupportActions();
+    } else if (currentImportType === 'vulns') {
+      if (!Array.isArray(analysis.data.actionsSupports)) analysis.data.actionsSupports = [];
+      importSelections.forEach(id => {
+        const parts = id.split('||');
+        const supportName = parts[0] || '';
+        const vulnName = parts[1] || '';
+        if (!analysis.data.actionsSupports.some(row => row.supportName === supportName && row.vulnName === vulnName)) {
+          analysis.data.actionsSupports.push({ supportName, vulnName, actions: [] });
         }
       });
       saveAnalyses();
@@ -3462,21 +3650,34 @@
     body.innerHTML = '';
     const analysis = analyses[currentIndex];
     if (!analysis || !analysis.data) return;
-    // Ensure data array
     if (!Array.isArray(analysis.data.actionsSupports)) analysis.data.actionsSupports = [];
-    // Build list of available supports from missions
     const supportsSet = new Set();
     (analysis.data.missions || []).forEach(mis => {
-      if (Array.isArray(mis.supports)) {
-        mis.supports.forEach(s => {
-          if (s && (s.name || s.denom)) supportsSet.add(s.name || s.denom);
-        });
-      }
+      (mis.supports || []).forEach(s => {
+        if (s && (s.name || s.denom)) supportsSet.add(s.name || s.denom);
+      });
+    });
+    (analysis.data.supportsQualif || []).forEach(s => {
+      if (s && s.name) supportsSet.add(s.name);
     });
     const supportOptions = Array.from(supportsSet);
-    // Render each row from actionsSupports
     analysis.data.actionsSupports.forEach((row, rowIndex) => {
       const tr = document.createElement('tr');
+      // Vulnerability select
+      let tdV = document.createElement('td');
+      const selV = document.createElement('select');
+      selV.className = 'form-select';
+      const supportObj = (analysis.data.supportsQualif || []).find(s => s.name === row.supportName);
+      const vulnOpts = supportObj ? (supportObj.vulnerabilities || []) : [];
+      selV.innerHTML = '<option value="">--Sélectionner--</option>' + vulnOpts.map(v => `<option value="${v.name}" ${row.vulnName===v.name?'selected':''}>${v.name}</option>`).join('');
+      selV.addEventListener('change', (e) => {
+        row.vulnName = e.target.value;
+        saveAnalyses();
+        renderSupportActions();
+        renderPlanActions();
+      });
+      tdV.appendChild(selV);
+      tr.appendChild(tdV);
       // Support select
       const tdSupport = document.createElement('td');
       const sel = document.createElement('select');
@@ -3484,13 +3685,15 @@
       sel.innerHTML = '<option value="">--Sélectionner--</option>' + supportOptions.map(opt => `<option value="${opt}" ${row.supportName===opt?'selected':''}>${opt}</option>`).join('');
       sel.addEventListener('change', (e) => {
         row.supportName = e.target.value;
+        // reset vuln if support changed
+        row.vulnName = '';
         saveAnalyses();
         renderSupportActions();
         renderPlanActions();
       });
       tdSupport.appendChild(sel);
       tr.appendChild(tdSupport);
-      // Actions cell: nested table
+      // Actions cell
       const tdActions = document.createElement('td');
       tdActions.className = 'assoc-cell';
       if (!Array.isArray(row.actions)) row.actions = [];
@@ -3628,7 +3831,7 @@
       delRow.className = 'delete-item';
       delRow.textContent = '×';
       delRow.addEventListener('click', () => {
-        if (!confirm('Supprimer ce support ?')) return;
+        if (!confirm('Supprimer cette ligne ?')) return;
         analysis.data.actionsSupports.splice(rowIndex, 1);
         saveAnalyses();
         renderSupportActions();
@@ -4080,11 +4283,12 @@
     });
     // Support actions
     (analysis.data.actionsSupports || []).forEach(row => {
-      const srcName = row.supportName || 'Support';
+      const sup = row.supportName || 'Support';
+      const vul = row.vulnName ? ` - ${row.vulnName}` : '';
       (row.actions || []).forEach(act => {
         actions.push({
           name: act.name,
-          source: 'Support: ' + srcName,
+          source: 'Support: ' + sup + vul,
           description: act.description || '',
           responsable: act.responsable || '',
           start: act.start || '',
@@ -4705,7 +4909,19 @@
         analysis.data.missions.push({ id: uid(), denom:'', nature:'information', description:'', responsable:'', supports: [] });
         saveAnalyses();
         renderMissionsTable();
+        renderSupportsQualifTable();
         updateAtelier1Graph();
+      });
+    }
+    const addSupportQualifBtn = document.getElementById('add-support-qualif-btn');
+    if (addSupportQualifBtn) {
+      addSupportQualifBtn.addEventListener('click', () => {
+        const analysis = analyses[currentIndex];
+        if (!analysis.data) analysis.data = {};
+        if (!Array.isArray(analysis.data.supportsQualif)) analysis.data.supportsQualif = [];
+        analysis.data.supportsQualif.push({ name:'', description:'', vulnerabilities: [] });
+        saveAnalyses();
+        renderSupportsQualifTable();
       });
     }
     // GAP analysis: add new requirement
@@ -4803,10 +5019,14 @@
         const analysis = analyses[currentIndex];
         if (!analysis.data) analysis.data = {};
         if (!Array.isArray(analysis.data.actionsSupports)) analysis.data.actionsSupports = [];
-        analysis.data.actionsSupports.push({ supportName: '', actions: [] });
+        analysis.data.actionsSupports.push({ supportName: '', vulnName: '', actions: [] });
         saveAnalyses();
         renderSupportActions();
       });
+    }
+    const importVulnBtn = document.getElementById('import-vuln-support');
+    if (importVulnBtn) {
+      importVulnBtn.addEventListener('click', () => openImportModal('vulns'));
     }
     // Atelier 5: add a new party action row
     const addPartieRow = document.getElementById('add-partie-action-row');
@@ -4986,6 +5206,12 @@
             // make the grid full width for gap analysis
             const grid = document.querySelector('#atelier1 .atelier-grid');
             if (grid) grid.classList.add('gap-active');
+          } else if (target === 'vuln') {
+            graphEl.style.display = 'none';
+            gapChartEl.style.display = 'none';
+            const grid = document.querySelector('#atelier1 .atelier-grid');
+            if (grid) grid.classList.remove('gap-active');
+            renderSupportsQualifTable();
           }
         }
       });
@@ -5051,6 +5277,7 @@
         data: {
           missions: [],
           events: [],
+          supportsQualif: [],
           // GAP analysis requirements (domaine, titre, description, application, justification)
           gap: [],
           // Atelier 2 couples source/objectif
