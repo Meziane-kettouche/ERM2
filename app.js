@@ -5206,6 +5206,12 @@
             // make the grid full width for gap analysis
             const grid = document.querySelector('#atelier1 .atelier-grid');
             if (grid) grid.classList.add('gap-active');
+          } else if (target === 'vuln') {
+            graphEl.style.display = 'none';
+            gapChartEl.style.display = 'none';
+            const grid = document.querySelector('#atelier1 .atelier-grid');
+            if (grid) grid.classList.remove('gap-active');
+            renderSupportsQualifTable();
           }
         }
       });
