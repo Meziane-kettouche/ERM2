@@ -1101,15 +1101,17 @@ canvas {
 .radar-board {
   position: relative;
   padding: 18px;
+  max-width: 700px;
+  margin: 0 auto;
 }
 .radar-canvas {
   display: block;
   margin: 0 auto;
-  background: #ffffff;
+  background: var(--bg-panel);
 }
 .radar-label {
   font-size: 12px;
-  fill: #8a93a3;
+  fill: var(--text-secondary);
 }
 .radar-label.radar-small {
   font-size: 11px;
@@ -1124,20 +1126,20 @@ canvas {
   opacity: 0.85;
 }
 .radar-grid {
-  stroke: #dfe6ef;
+  stroke: var(--text-secondary);
 }
 .radar-cross {
-  stroke: #9fb3c8;
+  stroke: var(--accent);
   stroke-dasharray: 6 6;
 }
 .radar-sector-tag {
   font-size: 13px;
-  fill: #334155;
+  fill: var(--text-primary);
   font-weight: 600;
 }
 .radar-sector-box {
   fill: none;
-  stroke: #dfe6ef;
+  stroke: var(--text-secondary);
   stroke-width: 2;
   rx: 16;
   ry: 16;

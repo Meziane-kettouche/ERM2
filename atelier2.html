@@ -39,34 +39,30 @@
       </nav>
       <!-- Atelier 2 content: SROV table and graph -->
       <section id="atelier2" class="tab-content active">
-        <div class="atelier-grid">
-          <div class="left">
-            <h2>Atelier 2 – Sources et objectifs</h2>
-            <p>Définissez les couples source de risque / objectif visé. Pour chaque couple, précisez la motivation et les ressources de la source (valeurs de 1 à 4), la priorité de l’objectif (1 à 4), si le couple est retenu et la justification de l’exclusion le cas échéant. La pertinence est calculée automatiquement (motivation × ressources) et colorée selon son niveau.</p>
-            <div class="table-container" style="overflow-x:auto; margin-bottom:1rem;">
-              <table id="srov-table" class="data-table" style="min-width:100%;">
-                <thead>
-                  <tr>
-                    <th>Source de risque</th>
-                    <th>Objectif visé</th>
-                    <th>Motivation</th>
-                    <th>Ressources</th>
-                    <th>Pertinence</th>
-                    <th>Priorité</th>
-                    <th>Retenue</th>
-                    <th>Justification</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="srov-body"></tbody>
-              </table>
-            </div>
-            <button id="add-srov-btn" class="add-item-btn">+ Ajouter un couple</button>
-          </div>
-          <div class="chart-wrapper">
-            <canvas id="atelier2-chart" width="600" height="400" class="chart-canvas"></canvas>
-          </div>
+        <h2>Atelier 2 – Sources et objectifs</h2>
+        <p>Définissez les couples source de risque / objectif visé. Pour chaque couple, précisez la motivation et les ressources de la source (valeurs de 1 à 4), la priorité de l’objectif (1 à 4), si le couple est retenu et la justification de l’exclusion le cas échéant. La pertinence est calculée automatiquement (motivation × ressources) et colorée selon son niveau.</p>
+        <div class="chart-wrapper">
+          <canvas id="atelier2-chart" width="600" height="400" class="chart-canvas"></canvas>
         </div>
+        <div class="table-container" style="overflow-x:auto; margin-bottom:1rem;">
+          <table id="srov-table" class="data-table" style="min-width:100%;">
+            <thead>
+              <tr>
+                <th>Source de risque</th>
+                <th>Objectif visé</th>
+                <th>Motivation</th>
+                <th>Ressources</th>
+                <th>Pertinence</th>
+                <th>Priorité</th>
+                <th>Retenue</th>
+                <th>Justification</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="srov-body"></tbody>
+          </table>
+        </div>
+        <button id="add-srov-btn" class="add-item-btn">+ Ajouter un couple</button>
       </section>
     </main>
   </div>

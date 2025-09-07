@@ -39,35 +39,31 @@
       </nav>
       <!-- Atelier 4: Scénarios opérationnels -->
       <section id="atelier4" class="tab-content active">
-        <div class="atelier-grid">
-          <div class="left">
-            <h2>Atelier 4 – Scénarios opérationnels</h2>
-            <p>Pour chaque scénario opérationnel, reliez un <strong>évènement redouté</strong> à un <strong>chemin d’attaque stratégique</strong> issu de l’atelier 3, puis décrivez les étapes de la cyber kill chain (Connaître, Rester, Trouver, Exploiter). Vous pouvez associer un ou plusieurs risques à chaque scénario et préciser pour chacun la vraisemblance et la gravité (échelle 1 à 4).</p>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem;">
-              <div class="table-container" style="overflow-x:auto; flex:1;">
-              <table id="ops-table" class="data-table" style="min-width:100%;">
-                <thead>
-                  <tr>
-                    <th>Évènement</th>
-                    <th>Chemin stratégique</th>
-                    <th>Risques</th>
-                    <th><span class="col-title">Connaître</span> <span class="col-toggle" data-col="connaitre">👁️</span></th>
-                    <th><span class="col-title">Rester</span> <span class="col-toggle" data-col="rester">👁️</span></th>
-                    <th><span class="col-title">Trouver</span> <span class="col-toggle" data-col="trouver">👁️</span></th>
-                    <th><span class="col-title">Exploiter</span> <span class="col-toggle" data-col="exploiter">👁️</span></th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="ops-body"></tbody>
-              </table>
-              </div>
-            </div>
-            <button id="add-op-btn" class="add-item-btn">+ Ajouter un scénario opérationnel</button>
-          </div>
-          <div class="chart-wrapper">
-            <canvas id="atelier4-chart" width="600" height="400" class="chart-canvas"></canvas>
+        <h2>Atelier 4 – Scénarios opérationnels</h2>
+        <p>Pour chaque scénario opérationnel, reliez un <strong>évènement redouté</strong> à un <strong>chemin d’attaque stratégique</strong> issu de l’atelier 3, puis décrivez les étapes de la cyber kill chain (Connaître, Rester, Trouver, Exploiter). Vous pouvez associer un ou plusieurs risques à chaque scénario et préciser pour chacun la vraisemblance et la gravité (échelle 1 à 4).</p>
+        <div class="chart-wrapper">
+          <canvas id="atelier4-chart" width="600" height="400" class="chart-canvas"></canvas>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem;">
+          <div class="table-container" style="overflow-x:auto; flex:1;">
+          <table id="ops-table" class="data-table" style="min-width:100%;">
+            <thead>
+              <tr>
+                <th>Évènement</th>
+                <th>Chemin stratégique</th>
+                <th>Risques</th>
+                <th><span class="col-title">Connaître</span> <span class="col-toggle" data-col="connaitre">👁️</span></th>
+                <th><span class="col-title">Rester</span> <span class="col-toggle" data-col="rester">👁️</span></th>
+                <th><span class="col-title">Trouver</span> <span class="col-toggle" data-col="trouver">👁️</span></th>
+                <th><span class="col-title">Exploiter</span> <span class="col-toggle" data-col="exploiter">👁️</span></th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="ops-body"></tbody>
+          </table>
           </div>
         </div>
+        <button id="add-op-btn" class="add-item-btn">+ Ajouter un scénario opérationnel</button>
       </section>
     </main>
   </div>

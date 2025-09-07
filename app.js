@@ -4157,6 +4157,9 @@
       residData.push({ value: residual, name: row.riskName, description: '' });
       arrowData.push({ coords: [initial, residual] });
     });
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+    const danger = getComputedStyle(document.documentElement).getPropertyValue('--danger').trim();
+    const secondary = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim();
     const option = {
       tooltip: {
         trigger: 'item',
@@ -4180,25 +4183,25 @@
           name: 'Initial',
           type: 'scatter',
           data: initData,
-          itemStyle: { color: 'blue' },
+          itemStyle: { color: accent },
           symbolSize: 20,
-          label: { show: true, formatter: '{b}', position: 'top', fontSize: 12, color: 'blue' }
+          label: { show: true, formatter: '{b}', position: 'top', fontSize: 12, color: accent }
         },
         {
           name: 'Résiduel',
           type: 'scatter',
           data: residData,
-          itemStyle: { color: 'red' },
+          itemStyle: { color: danger },
           symbolSize: 15,
-          label: { show: true, formatter: '{b}', position: 'bottom', fontSize: 12, color: 'red' }
+          label: { show: true, formatter: '{b}', position: 'bottom', fontSize: 12, color: danger }
         },
         {
           name: '-->',
           type: 'lines',
           coordinateSystem: 'cartesian2d',
           data: arrowData,
-          lineStyle: { color: 'gray', width: 2, type: 'dotted', opacity: 1 },
-          effect: { show: true, symbol: 'arrow', color: 'gray', symbolSize: 10, trailLength: 0 }
+          lineStyle: { color: secondary, width: 2, type: 'dotted', opacity: 1 },
+          effect: { show: true, symbol: 'arrow', color: secondary, symbolSize: 10, trailLength: 0 }
         }
       ]
     };
@@ -4939,10 +4942,10 @@
     }
 
     function colorForFiabilite(v) {
-      if (v < 4) return '#d54e5a';
-      if (v < 5) return '#ee7b8b';
-      if (v < 7) return '#5bb8c0';
-      return '#3da2c7';
+      if (v < 4) return levelColor(4);
+      if (v < 5) return levelColor(3);
+      if (v < 7) return levelColor(2);
+      return levelColor(1);
     }
 
     function sizeForExposition(v) {
@@ -4983,6 +4986,7 @@
       (acc[d.zone] ||= []).push(d);
       return acc;
     }, {});
+    const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-dark').trim();
 
     Object.entries(byZone).forEach(([zone, items]) => {
       items.forEach((d, i) => {
@@ -4998,7 +5002,7 @@
         c.setAttribute('r', sizeForExposition(d.exposition));
         c.setAttribute('fill', colorForFiabilite(d.fiabilite));
         c.setAttribute('opacity', '0.95');
-        c.setAttribute('stroke', '#0b1220');
+        c.setAttribute('stroke', borderColor);
         c.setAttribute('stroke-opacity', '0.1');
         c.setAttribute('filter', 'url(#softShadow)');
 
@@ -5532,9 +5536,12 @@
         document.querySelectorAll('#atelier5 .atelier5-subtab-content').forEach(content => {
           content.classList.toggle('active', content.id === 'atelier5-' + target + '-tab');
         });
-        // When switching to the plan tab, refresh the plan view and gantt chart
+        // Refresh charts when switching tabs
         if (target === 'plan') {
           renderPlanActions();
+        }
+        if (target === 'risques') {
+          renderRisquesChart();
         }
       });
     });
