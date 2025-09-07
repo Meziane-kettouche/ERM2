@@ -130,6 +130,7 @@
     renderPartiesActions();
     renderRisquesActions();
     renderPlanActions();
+    renderRisquesChart();
 
     // Ensure Atelier 3 grid layout matches the active sub‑tab
     const grid3 = document.querySelector('#atelier3 .atelier-grid');
@@ -1411,20 +1412,15 @@
         items.push({ id, label, desc: desc || '', extra: '' });
       });
     } else if (type === 'risques') {
-      // gather risks from operational scenarios (analysis.data.so)
+      // gather risks from risk list
       const riskMap = new Map();
-      (analysis.data.so || []).forEach(scenario => {
-        (scenario.risks || []).forEach(riskObj => {
-          const name = riskObj.name || '';
-          if (!name) return;
-          if (!riskMap.has(name)) {
-            // try to find description from mitreLibrary
-            let desc = '';
-            const tech = mitreLibrary.find(t => t && (t.id === name || t.title === name));
-            if (tech) desc = tech.description || '';
-            riskMap.set(name, { name, desc });
-          }
-        });
+      (analysis.data.risques || []).forEach(riskObj => {
+        const name = riskObj.libelle || riskObj.titre || '';
+        if (!name) return;
+        if (!riskMap.has(name)) {
+          const desc = riskObj.description || '';
+          riskMap.set(name, { name, desc });
+        }
       });
       riskMap.forEach((obj) => {
         items.push({ id: obj.name, label: obj.name, desc: obj.desc || '', extra: '' });
@@ -1545,15 +1541,13 @@
       if (!Array.isArray(analysis.data.actionsRisques)) analysis.data.actionsRisques = [];
       // Build risk map again to get current levels
       const riskMap = new Map();
-      (analysis.data.so || []).forEach(scenario => {
-        (scenario.risks || []).forEach(riskObj => {
-          const name = riskObj.name || '';
-          if (!name) return;
-          const current = riskMap.get(name) || { name, vraisemblance: riskObj.vraisemblance || 1, gravite: riskObj.gravite || 1 };
-          current.vraisemblance = Math.max(current.vraisemblance, riskObj.vraisemblance || 1);
-          current.gravite = Math.max(current.gravite, riskObj.gravite || 1);
-          riskMap.set(name, current);
-        });
+      (analysis.data.risques || []).forEach(riskObj => {
+        const name = riskObj.libelle || riskObj.titre || '';
+        if (!name) return;
+        const current = riskMap.get(name) || { name, vraisemblance: parseInt(riskObj.vraisemblance, 10) || 1, gravite: parseInt(riskObj.gravite, 10) || 1 };
+        current.vraisemblance = Math.max(current.vraisemblance, parseInt(riskObj.vraisemblance, 10) || 1);
+        current.gravite = Math.max(current.gravite, parseInt(riskObj.gravite, 10) || 1);
+        riskMap.set(name, current);
       });
       importSelections.forEach(name => {
         const risk = riskMap.get(name) || { name, vraisemblance: 1, gravite: 1 };
@@ -3456,6 +3450,7 @@
     analysis.data.risques.forEach((item, idx) => {
       // Ensure risk has unique id and proper arrays
       if (!item.id) item.id = uid();
+      if (item.libelle === undefined) item.libelle = '';
       if (!Array.isArray(item.sourceIds)) item.sourceIds = [];
       const el = document.createElement('div');
       el.className = 'item';
@@ -3468,6 +3463,7 @@
         analysis.data.risques.splice(idx, 1);
         saveAnalyses();
         renderRisques();
+        updateAtelier4Chart();
         updateAtelier5Chart();
       });
       el.appendChild(delBtn);
@@ -3495,10 +3491,19 @@
         item.sourceIds = vals;
         saveAnalyses();
       }));
+      // Field for risk label (libellé)
+      el.appendChild(createInput('Libellé', 'text', item.libelle, (v) => {
+        item.libelle = v;
+        saveAnalyses();
+        updateAtelier4Chart();
+        updateAtelier5Chart();
+      }));
       // Fields for titre, description, indice, vraisemblance, gravite, mesures
       el.appendChild(createInput('Titre du risque', 'text', item.titre, (v) => {
         item.titre = v;
         saveAnalyses();
+        updateAtelier4Chart();
+        updateAtelier5Chart();
       }));
       el.appendChild(createInput('Description', 'textarea', item.description, (v) => {
         item.description = v;
@@ -3507,16 +3512,19 @@
       el.appendChild(createInput('Indice', 'text', item.indice, (v) => {
         item.indice = v;
         saveAnalyses();
+        updateAtelier4Chart();
         updateAtelier5Chart();
       }));
       el.appendChild(createInput('Vraisemblance', 'text', item.vraisemblance, (v) => {
         item.vraisemblance = v;
         saveAnalyses();
+        updateAtelier4Chart();
         updateAtelier5Chart();
       }));
       el.appendChild(createInput('Gravité', 'text', item.gravite, (v) => {
         item.gravite = v;
         saveAnalyses();
+        updateAtelier4Chart();
         updateAtelier5Chart();
       }));
       el.appendChild(createInput('Mesures de traitement', 'textarea', item.mesures, (v) => {
@@ -4130,6 +4138,8 @@
     if (!el || typeof echarts === 'undefined') return;
     if (!risquesChart) {
       risquesChart = echarts.init(el);
+    } else {
+      risquesChart.resize();
     }
     const analysis = analyses[currentIndex];
     if (!analysis || !analysis.data) {
@@ -4137,15 +4147,13 @@
       return;
     }
     const riskMap = new Map();
-    (analysis.data.so || []).forEach(scenario => {
-      (scenario.risks || []).forEach(riskObj => {
-        const name = riskObj.name || '';
-        if (!name) return;
-        const cur = riskMap.get(name) || { name, vraisemblance: riskObj.vraisemblance || 1, gravite: riskObj.gravite || 1 };
-        cur.vraisemblance = Math.max(cur.vraisemblance, riskObj.vraisemblance || 1);
-        cur.gravite = Math.max(cur.gravite, riskObj.gravite || 1);
-        riskMap.set(name, cur);
-      });
+    (analysis.data.risques || []).forEach(riskObj => {
+      const name = riskObj.libelle || riskObj.titre || '';
+      if (!name) return;
+      const cur = riskMap.get(name) || { name, vraisemblance: parseInt(riskObj.vraisemblance, 10) || 1, gravite: parseInt(riskObj.gravite, 10) || 1 };
+      cur.vraisemblance = Math.max(cur.vraisemblance, parseInt(riskObj.vraisemblance, 10) || 1);
+      cur.gravite = Math.max(cur.gravite, parseInt(riskObj.gravite, 10) || 1);
+      riskMap.set(name, cur);
     });
     const initData = [];
     const residData = [];
@@ -4231,15 +4239,13 @@
     if (!Array.isArray(analysis.data.actionsRisques)) analysis.data.actionsRisques = [];
     // Gather risks from operational scenarios (atelier 4) for reference
     const riskMap = new Map();
-    (analysis.data.so || []).forEach(scenario => {
-      (scenario.risks || []).forEach(riskObj => {
-        const name = riskObj.name || '';
-        if (!name) return;
-        const cur = riskMap.get(name) || { name, vraisemblance: riskObj.vraisemblance || 1, gravite: riskObj.gravite || 1 };
-        cur.vraisemblance = Math.max(cur.vraisemblance, riskObj.vraisemblance || 1);
-        cur.gravite = Math.max(cur.gravite, riskObj.gravite || 1);
-        riskMap.set(name, cur);
-      });
+    (analysis.data.risques || []).forEach(riskObj => {
+      const name = riskObj.libelle || riskObj.titre || '';
+      if (!name) return;
+      const cur = riskMap.get(name) || { name, vraisemblance: parseInt(riskObj.vraisemblance, 10) || 1, gravite: parseInt(riskObj.gravite, 10) || 1 };
+      cur.vraisemblance = Math.max(cur.vraisemblance, parseInt(riskObj.vraisemblance, 10) || 1);
+      cur.gravite = Math.max(cur.gravite, parseInt(riskObj.gravite, 10) || 1);
+      riskMap.set(name, cur);
     });
     analysis.data.actionsRisques.forEach(row => {
       if (!row.riskId && row.riskName) row.riskId = row.riskName.split(' ')[0];
@@ -4706,29 +4712,32 @@
         ctx.strokeRect(x, y, cellW, cellH);
       }
     }
-    // Group risks by cell
-    const cellMap = {};
+    // Draw each risk as a point with its label
+    const pointColor = getComputedStyle(document.documentElement).getPropertyValue('--accent') || '#ffffff';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
     risks.forEach(r => {
       const v = parseInt(r.vraisemblance, 10);
       const g = parseInt(r.gravite, 10);
       if (!v || !g) return;
-      const key = `${v}-${g}`;
-      if (!cellMap[key]) cellMap[key] = [];
-      cellMap[key].push(r.name || '');
-    });
-    ctx.fillStyle = 'white';
-    ctx.font = '12px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    Object.entries(cellMap).forEach(([key, names]) => {
-      const [v, g] = key.split('-').map(Number);
-      const row = 4 - g;
-      const x = (v - 1) * cellW + cellW / 2;
-      const y = row * cellH + cellH / 2;
-      ctx.fillText(names.join(', '), x, y);
+      const label = r.libelle || r.titre || r.name || '';
+      const x = (v - 0.5) * cellW;
+      const y = (4 - g + 0.5) * cellH;
+      // Point
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.fillStyle = pointColor;
+      ctx.fill();
+      ctx.strokeStyle = '#000';
+      ctx.stroke();
+      // Label above the point
+      ctx.fillStyle = 'white';
+      ctx.fillText(label, x, y - 8);
     });
     // Axis labels
     ctx.fillStyle = 'white';
+    ctx.textBaseline = 'alphabetic';
     ctx.textAlign = 'center';
     for (let v = 1; v <= 4; v++) {
       const x = (v - 0.5) * cellW;
@@ -4743,6 +4752,7 @@
     ctx.rotate(-Math.PI / 2);
     ctx.fillText('Gravité', -height / 2, 12);
     ctx.restore();
+    ctx.textAlign = 'center';
     ctx.fillText('Vraisemblance', width / 2, height - 20);
   }
 
@@ -5058,28 +5068,23 @@
     } else {
       if (radarWrap) radarWrap.style.display = 'none';
       if (canvas) canvas.style.display = 'block';
-      const ppList = analysis.data.pp || [];
-      let sumSSI = 0;
-      let sumMenace = 0;
-      let count = 0;
-      ppList.forEach(item => {
-        if (typeof item.niveauSSI === 'number') {
-          sumSSI += item.niveauSSI;
-          count++;
-        }
-        if (typeof item.indiceMenace === 'number') {
-          sumMenace += item.indiceMenace;
-        }
-      });
-      const avgSSI = count ? sumSSI / count : 0;
-      const avgMenace = count ? sumMenace / count : 0;
-      if (count > 0 && canvas) {
-        drawRadarChart(canvas, ['Niveau SSI', 'Indice de menace'], {
-          data: [avgSSI, avgMenace],
-          color: 'rgba(77,163,255,0.4)'
+      const strategies = analysis.data.strategies || [];
+      const counts = {};
+      strategies.forEach(st => {
+        let maxImpact = 0;
+        (st.eventIds || []).forEach(evId => {
+          const ev = (analysis.data.events || []).find(e => e.id === evId);
+          const imp = ev ? parseInt(ev.impact, 10) || 0 : 0;
+          if (imp > maxImpact) maxImpact = imp;
         });
-      } else if (canvas) {
-        clearCanvas(canvas);
+        const key = maxImpact > 0 ? String(maxImpact) : '0';
+        counts[key] = (counts[key] || 0) + 1;
+      });
+      const labels = Object.keys(counts);
+      const data = labels.map(l => counts[l]);
+      if (canvas) {
+        if (labels.length > 0) drawBarChart(canvas, labels, data);
+        else clearCanvas(canvas);
       }
     }
   }
@@ -5087,30 +5092,15 @@
   function updateAtelier4Chart() {
     const analysis = analyses[currentIndex];
     if (!analysis || !analysis.data) return;
-    const ops = analysis.data.so || [];
-    const risks = [];
-    ops.forEach(item => {
-      (item.risks || []).forEach(r => risks.push(r));
-    });
+    const risques = analysis.data.risques || [];
     const canvas = document.getElementById('atelier4-chart');
     if (canvas) {
-      drawRiskMatrix(canvas, risks);
+      drawRiskMatrix(canvas, risques);
     }
   }
 
   function updateAtelier5Chart() {
-    const analysis = analyses[currentIndex];
-    if (!analysis || !analysis.data) return;
-    const risques = analysis.data.risques || [];
-    const counts = {};
-    risques.forEach(item => {
-      const key = (item.gravite || '').trim() || 'Non précisé';
-      counts[key] = (counts[key] || 0) + 1;
-    });
-    const labels = Object.keys(counts);
-    const data = labels.map(l => counts[l]);
-    const canvas = document.getElementById('atelier5-chart');
-    drawBarChart(canvas, labels, data);
+    renderRisquesChart();
   }
 
   // ----- Event handlers for adding items
@@ -5315,6 +5305,7 @@
         const defaultScenario = (analysis.data.so && analysis.data.so[0]) ? analysis.data.so[0].id : '';
         analysis.data.risques.push({
           id: uid(),
+          libelle:'',
           titre:'',
           description:'',
           missionId: defaultMission,
@@ -5328,6 +5319,8 @@
         });
         saveAnalyses();
         renderRisques();
+        updateAtelier4Chart();
+        updateAtelier5Chart();
       });
     }
 
