@@ -9,6 +9,7 @@
   // ----- Data model and persistence
   let analyses = [];
   let currentIndex = -1;
+  let risquesChart;
 
   function loadAnalyses() {
     try {
@@ -4123,6 +4124,99 @@
   }
 
   // Render actions for risks: show each risk and allow adding actions and residual levels
+  function renderRisquesChart() {
+    const el = document.getElementById('risques-chart');
+    if (!el || typeof echarts === 'undefined') return;
+    if (!risquesChart) {
+      risquesChart = echarts.init(el);
+    }
+    const analysis = analyses[currentIndex];
+    if (!analysis || !analysis.data) {
+      risquesChart.clear();
+      return;
+    }
+    const riskMap = new Map();
+    (analysis.data.so || []).forEach(scenario => {
+      (scenario.risks || []).forEach(riskObj => {
+        const name = riskObj.name || '';
+        if (!name) return;
+        const cur = riskMap.get(name) || { name, vraisemblance: riskObj.vraisemblance || 1, gravite: riskObj.gravite || 1 };
+        cur.vraisemblance = Math.max(cur.vraisemblance, riskObj.vraisemblance || 1);
+        cur.gravite = Math.max(cur.gravite, riskObj.gravite || 1);
+        riskMap.set(name, cur);
+      });
+    });
+    const initData = [];
+    const residData = [];
+    const arrowData = [];
+    (analysis.data.actionsRisques || []).forEach(row => {
+      const risk = riskMap.get(row.riskName) || { name: row.riskName, vraisemblance: row.residualV || 1, gravite: row.residualG || 1 };
+      const initial = [risk.gravite, risk.vraisemblance];
+      const residual = [row.residualG || risk.gravite, row.residualV || risk.vraisemblance];
+      initData.push({ value: initial, name: row.riskName, description: '' });
+      residData.push({ value: residual, name: row.riskName, description: '' });
+      arrowData.push({ coords: [initial, residual] });
+    });
+    const option = {
+      tooltip: {
+        trigger: 'item',
+        formatter: function (params) {
+          if (params.seriesType === 'scatter') {
+            return `<strong>${params.data.name}</strong><br/>Gravité: ${params.data.value[0]}<br/>Vraisemblance: ${params.data.value[1]}`;
+          }
+          return '';
+        }
+      },
+      legend: {
+        data: ['Initial', 'Résiduel', '-->'],
+        bottom: 0,
+        selected: { '-->': true },
+        selectedMode: 'multiple'
+      },
+      xAxis: { name: 'Gravité', type: 'value', min: 0, max: 4 },
+      yAxis: { name: 'Vraisemblance', type: 'value', min: 0, max: 4 },
+      series: [
+        {
+          name: 'Initial',
+          type: 'scatter',
+          data: initData,
+          itemStyle: { color: 'blue' },
+          symbolSize: 20,
+          label: { show: true, formatter: '{b}', position: 'top', fontSize: 12, color: 'blue' }
+        },
+        {
+          name: 'Résiduel',
+          type: 'scatter',
+          data: residData,
+          itemStyle: { color: 'red' },
+          symbolSize: 15,
+          label: { show: true, formatter: '{b}', position: 'bottom', fontSize: 12, color: 'red' }
+        },
+        {
+          name: '-->',
+          type: 'lines',
+          coordinateSystem: 'cartesian2d',
+          data: arrowData,
+          lineStyle: { color: 'gray', width: 2, type: 'dotted', opacity: 1 },
+          effect: { show: true, symbol: 'arrow', color: 'gray', symbolSize: 10, trailLength: 0 }
+        }
+      ]
+    };
+    risquesChart.setOption(option);
+    risquesChart.off('legendselectchanged');
+    risquesChart.on('legendselectchanged', function (event) {
+      if (event.name === '-->') {
+        const sel = event.selected['-->'];
+        const opt = risquesChart.getOption();
+        const arrow = opt.series[2];
+        arrow.lineStyle.opacity = sel ? 1 : 0;
+        arrow.effect.show = sel;
+        risquesChart.setOption({ series: opt.series });
+      }
+    });
+  }
+
+  // Render actions for risks: show each risk and allow adding actions and residual levels
   function renderRisquesActions() {
     const body = document.getElementById('risques-actions-body');
     if (!body) return;
@@ -4183,6 +4277,7 @@
         row.residualV = parseInt(e.target.value, 10);
         e.target.style.backgroundColor = levelColor(row.residualV);
         saveAnalyses();
+        renderRisquesChart();
       });
       tdResVr.appendChild(selVr);
       tr.appendChild(tdResVr);
@@ -4202,6 +4297,7 @@
         row.residualG = parseInt(e.target.value, 10);
         e.target.style.backgroundColor = levelColor(row.residualG);
         saveAnalyses();
+        renderRisquesChart();
       });
       tdResGr.appendChild(selGr);
       tr.appendChild(tdResGr);
@@ -4354,6 +4450,7 @@
       body.appendChild(tr);
     });
     addDataTableResizers('risques-actions-table');
+    renderRisquesChart();
   }
 
   // Aggregate all actions and render plan table + gantt chart
