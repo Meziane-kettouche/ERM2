@@ -1433,18 +1433,19 @@
         items.push({ id, label, desc: desc || '', extra: '' });
       });
     } else if (type === 'risques') {
-      // gather risks from risk list
+      // gather risks from risk list, falling back on indice or id if needed
       const riskMap = new Map();
       (analysis.data.risques || []).forEach(riskObj => {
-        const name = riskObj.libelle || riskObj.titre || '';
-        if (!name) return;
-        if (!riskMap.has(name)) {
+        const label = riskObj.libelle || riskObj.titre || riskObj.indice || riskObj.id || '';
+        if (!label) return;
+        const id = riskObj.id || label;
+        if (!riskMap.has(id)) {
           const desc = riskObj.description || '';
-          riskMap.set(name, { name, desc });
+          riskMap.set(id, { id, label, desc });
         }
       });
       riskMap.forEach((obj) => {
-        items.push({ id: obj.name, label: obj.name, desc: obj.desc || '', extra: '' });
+        items.push({ id: obj.id, label: obj.label, desc: obj.desc || '', extra: '' });
       });
     }
     // Render list
@@ -1563,18 +1564,19 @@
       // Build risk map again to get current levels
       const riskMap = new Map();
       (analysis.data.risques || []).forEach(riskObj => {
-        const name = riskObj.libelle || riskObj.titre || '';
-        if (!name) return;
-        const current = riskMap.get(name) || { name, vraisemblance: parseInt(riskObj.vraisemblance, 10) || 1, gravite: parseInt(riskObj.gravite, 10) || 1 };
+        const label = riskObj.libelle || riskObj.titre || riskObj.indice || riskObj.id || '';
+        if (!label) return;
+        const id = riskObj.id || label;
+        const current = riskMap.get(id) || { id, name: label, vraisemblance: parseInt(riskObj.vraisemblance, 10) || 1, gravite: parseInt(riskObj.gravite, 10) || 1 };
         current.vraisemblance = Math.max(current.vraisemblance, parseInt(riskObj.vraisemblance, 10) || 1);
         current.gravite = Math.max(current.gravite, parseInt(riskObj.gravite, 10) || 1);
-        riskMap.set(name, current);
+        riskMap.set(id, current);
       });
-      importSelections.forEach(name => {
-        const risk = riskMap.get(name) || { name, vraisemblance: 1, gravite: 1 };
-        const riskId = (name.split(' ')[0] || name);
-        if (!analysis.data.actionsRisques.some(row => row.riskName === name)) {
-          analysis.data.actionsRisques.push({ riskId: riskId, riskName: name, residualV: risk.vraisemblance, residualG: risk.gravite, actions: [] });
+      importSelections.forEach(id => {
+        const risk = riskMap.get(id);
+        if (!risk) return;
+        if (!analysis.data.actionsRisques.some(row => row.riskId === id)) {
+          analysis.data.actionsRisques.push({ riskId: id, riskName: risk.name, residualV: risk.vraisemblance, residualG: risk.gravite, actions: [] });
         }
       });
       saveAnalyses();
@@ -4169,23 +4171,29 @@
     }
     const riskMap = new Map();
     (analysis.data.risques || []).forEach(riskObj => {
-      const name = riskObj.libelle || riskObj.titre || '';
-      if (!name) return;
-      const cur = riskMap.get(name) || { name, vraisemblance: parseInt(riskObj.vraisemblance, 10) || 1, gravite: parseInt(riskObj.gravite, 10) || 1 };
+      const label = riskObj.libelle || riskObj.titre || riskObj.indice || riskObj.id || '';
+      if (!label) return;
+      const id = riskObj.id || label;
+      const cur = riskMap.get(id) || { id, name: label, vraisemblance: parseInt(riskObj.vraisemblance, 10) || 1, gravite: parseInt(riskObj.gravite, 10) || 1 };
       cur.vraisemblance = Math.max(cur.vraisemblance, parseInt(riskObj.vraisemblance, 10) || 1);
       cur.gravite = Math.max(cur.gravite, parseInt(riskObj.gravite, 10) || 1);
-      riskMap.set(name, cur);
+      riskMap.set(id, cur);
     });
     const initData = [];
     const residData = [];
     const arrowData = [];
     (analysis.data.actionsRisques || []).forEach(row => {
-      if (!row.riskId && row.riskName) row.riskId = row.riskName.split(' ')[0];
-      const risk = riskMap.get(row.riskName) || { name: row.riskName, vraisemblance: row.residualV || 1, gravite: row.residualG || 1 };
+      if (!row.riskId && row.riskName) {
+        for (const [id, obj] of riskMap.entries()) {
+          if (obj.name === row.riskName) { row.riskId = id; break; }
+        }
+        if (!row.riskId) row.riskId = row.riskName ? row.riskName.split(' ')[0] : '';
+      }
+      const risk = riskMap.get(row.riskId) || { id: row.riskId, name: row.riskName, vraisemblance: row.residualV || 1, gravite: row.residualG || 1 };
       const initial = [risk.gravite, risk.vraisemblance];
       const residual = [row.residualG || risk.gravite, row.residualV || risk.vraisemblance];
-      initData.push({ value: initial, name: row.riskId || row.riskName, description: row.riskName });
-      residData.push({ value: residual, name: row.riskId || row.riskName, description: row.riskName });
+      initData.push({ value: initial, name: row.riskId || row.riskName, description: row.riskName || risk.name });
+      residData.push({ value: residual, name: row.riskId || row.riskName, description: row.riskName || risk.name });
       arrowData.push({ coords: [initial, residual] });
     });
     const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
@@ -4261,16 +4269,22 @@
     // Gather risks from operational scenarios (atelier 4) for reference
     const riskMap = new Map();
     (analysis.data.risques || []).forEach(riskObj => {
-      const name = riskObj.libelle || riskObj.titre || '';
-      if (!name) return;
-      const cur = riskMap.get(name) || { name, vraisemblance: parseInt(riskObj.vraisemblance, 10) || 1, gravite: parseInt(riskObj.gravite, 10) || 1 };
+      const label = riskObj.libelle || riskObj.titre || riskObj.indice || riskObj.id || '';
+      if (!label) return;
+      const id = riskObj.id || label;
+      const cur = riskMap.get(id) || { id, name: label, vraisemblance: parseInt(riskObj.vraisemblance, 10) || 1, gravite: parseInt(riskObj.gravite, 10) || 1 };
       cur.vraisemblance = Math.max(cur.vraisemblance, parseInt(riskObj.vraisemblance, 10) || 1);
       cur.gravite = Math.max(cur.gravite, parseInt(riskObj.gravite, 10) || 1);
-      riskMap.set(name, cur);
+      riskMap.set(id, cur);
     });
     analysis.data.actionsRisques.forEach(row => {
-      if (!row.riskId && row.riskName) row.riskId = row.riskName.split(' ')[0];
-      const risk = riskMap.get(row.riskName) || { name: row.riskName, vraisemblance: row.residualV || 1, gravite: row.residualG || 1 };
+      if (!row.riskId && row.riskName) {
+        for (const [id, obj] of riskMap.entries()) {
+          if (obj.name === row.riskName) { row.riskId = id; break; }
+        }
+        if (!row.riskId) row.riskId = row.riskName ? row.riskName.split(' ')[0] : '';
+      }
+      const risk = riskMap.get(row.riskId) || { id: row.riskId, name: row.riskName, vraisemblance: row.residualV || 1, gravite: row.residualG || 1 };
       const tr = document.createElement('tr');
       const tdId = document.createElement('td');
       if (row.manual) {
