@@ -1159,7 +1159,7 @@ canvas {
 }
 
 .wrap {
-  width: 100vw;
+  width: 100%;
   margin: 0;
   padding: 12px;
 }
@@ -1197,9 +1197,10 @@ canvas {
 }
 
 .chart {
-  width: 100vw;
+  width: 100%;
   height: 70vh;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: auto;
   border: 1px solid #0b1228;
   border-radius: 12px;
   background: var(--panel);
@@ -1207,8 +1208,6 @@ canvas {
 
 svg {
   display: block;
-  width: 100%;
-  height: auto;
 }
 
 .axis text {
