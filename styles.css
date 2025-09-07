@@ -264,6 +264,16 @@ input[type="text"], input[type="number"], textarea {
   resize: vertical;
 }
 
+.mission-meta {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.mission-meta > div {
+  flex: 1;
+}
+
 /* Select fields */
 select {
   width: 100%;
