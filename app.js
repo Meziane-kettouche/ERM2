@@ -1557,8 +1557,9 @@
       });
       importSelections.forEach(name => {
         const risk = riskMap.get(name) || { name, vraisemblance: 1, gravite: 1 };
+        const riskId = (name.split(' ')[0] || name);
         if (!analysis.data.actionsRisques.some(row => row.riskName === name)) {
-          analysis.data.actionsRisques.push({ riskName: name, residualV: risk.vraisemblance, residualG: risk.gravite, actions: [] });
+          analysis.data.actionsRisques.push({ riskId: riskId, riskName: name, residualV: risk.vraisemblance, residualG: risk.gravite, actions: [] });
         }
       });
       saveAnalyses();
@@ -4150,11 +4151,12 @@
     const residData = [];
     const arrowData = [];
     (analysis.data.actionsRisques || []).forEach(row => {
+      if (!row.riskId && row.riskName) row.riskId = row.riskName.split(' ')[0];
       const risk = riskMap.get(row.riskName) || { name: row.riskName, vraisemblance: row.residualV || 1, gravite: row.residualG || 1 };
       const initial = [risk.gravite, risk.vraisemblance];
       const residual = [row.residualG || risk.gravite, row.residualV || risk.vraisemblance];
-      initData.push({ value: initial, name: row.riskName, description: '' });
-      residData.push({ value: residual, name: row.riskName, description: '' });
+      initData.push({ value: initial, name: row.riskId || row.riskName, description: row.riskName });
+      residData.push({ value: residual, name: row.riskId || row.riskName, description: row.riskName });
       arrowData.push({ coords: [initial, residual] });
     });
     const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
@@ -4165,7 +4167,7 @@
         trigger: 'item',
         formatter: function (params) {
           if (params.seriesType === 'scatter') {
-            return `<strong>${params.data.name}</strong><br/>Gravité: ${params.data.value[0]}<br/>Vraisemblance: ${params.data.value[1]}`;
+            return `<strong>${params.data.name}</strong><br/>${params.data.description}<br/>Gravité: ${params.data.value[0]}<br/>Vraisemblance: ${params.data.value[1]}`;
           }
           return '';
         }
@@ -4240,8 +4242,22 @@
       });
     });
     analysis.data.actionsRisques.forEach(row => {
+      if (!row.riskId && row.riskName) row.riskId = row.riskName.split(' ')[0];
       const risk = riskMap.get(row.riskName) || { name: row.riskName, vraisemblance: row.residualV || 1, gravite: row.residualG || 1 };
       const tr = document.createElement('tr');
+      const tdId = document.createElement('td');
+      if (row.manual) {
+        const inpId = document.createElement('input');
+        inpId.value = row.riskId || '';
+        inpId.addEventListener('input', (e) => {
+          row.riskId = e.target.value;
+          saveAnalyses();
+        });
+        tdId.appendChild(inpId);
+      } else {
+        tdId.textContent = row.riskId || '';
+      }
+      tr.appendChild(tdId);
       const tdName = document.createElement('td');
       if (row.manual) {
         const inpRisk = document.createElement('input');
