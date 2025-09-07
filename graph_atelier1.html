@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Chaîne de dépendance : Valeurs → Supports → Évènements</title>
+<style>
+  :root{
+    --bg:#0b1422;--panel:#12243c;--ink:#ffffff;--border:#203656;--link:#9fb5ff;
+    --g1:#22c55e;--g2:#eab308;--g3:#f97316;--g4:#ef4444;--neutral:#6ea8fe;
+  }
+  html,body{margin:0;background:var(--bg);color:var(--ink);font:14px system-ui,Segoe UI,Roboto,Arial,sans-serif}
+  .wrap{max-width:1100px;margin:18px auto;padding:12px}
+  h1{font-size:20px;margin:0 0 10px;color:var(--ink);text-align:center}
+  .legend{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:10px 0 12px}
+  .legend .i{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--border);padding:6px 10px;border-radius:10px}
+  .legend .shape{display:inline-block;vertical-align:middle}
+  .legend .circle{width:18px;height:18px;border-radius:50%;background:var(--neutral)}
+  .legend .hex{width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;position:relative}
+  .legend .hex:before{content:"";position:absolute;left:-10px;top:-9px;border-left:10px solid transparent;border-right:10px solid transparent;border-bottom:9px solid var(--neutral)}
+  .legend .hex:after{content:"";position:absolute;left:-10px;top:0;border-left:10px solid transparent;border-right:10px solid transparent;border-top:9px solid var(--neutral)}
+  .legend .tri{width:0;height:0;border-top:10px solid transparent;border-bottom:10px solid transparent;border-left:18px solid var(--neutral)}
+  .legend .chip{width:12px;height:12px;border-radius:2px;display:inline-block}
+
+  .card{background:#0e1b2d;border:1px solid var(--border);border-radius:12px;padding:10px}
+  svg{width:100%;height:560px;display:block;border-radius:10px}
+
+  .link{fill:none;stroke:var(--link);stroke-opacity:.85;transition:opacity .12s, stroke-width .12s}
+  .node .shape{stroke:#000;stroke-opacity:.25;stroke-width:1}
+
+  .lbl{fill:#ffffff;font-weight:600;font-size:13px}
+  .lbl.center{text-anchor:middle}
+
+  /* état atténué + highlight */
+  .dim{opacity:.15}
+  .hi-node .shape{stroke:#fff;stroke-opacity:.9;stroke-width:1.4;filter:drop-shadow(0 0 4px rgba(255,255,255,.25))}
+  .hi-link{stroke-width:6;stroke-opacity:1}
+
+  .tip{position:fixed;pointer-events:none;background:#0a1626;color:#ffffff;border:1px solid #1b2d4a;
+       padding:6px 8px;border-radius:10px;font-size:12px;opacity:0;transform:translate(-50%,-120%);transition:opacity .12s}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Chaîne de dépendance : Valeurs métier → Biens supports → Évènements redoutés</h1>
+
+  <!-- Petite légende des formes + rappel de la règle de couleur -->
+  <div class="legend">
+    <div class="i"><span class="shape circle"></span> Valeur métier (texte en dessous)</div>
+    <div class="i"><span class="shape hex"></span> Bien support (texte en dessous)</div>
+    <div class="i"><span class="shape tri"></span> Évènement (texte à droite)</div>
+    <div class="i">
+      <span>Couleur = gravité max connectée :</span>
+      <span class="chip" style="background:var(--g1)"></span> G1
+      <span class="chip" style="background:var(--g2)"></span> G2
+      <span class="chip" style="background:var(--g3)"></span> G3
+      <span class="chip" style="background:var(--g4)"></span> G4
+    </div>
+  </div>
+
+  <div class="card">
+    <svg id="viz" viewBox="0 0 1100 560" preserveAspectRatio="xMidYMid meet" aria-label="Graphe Atelier 1"></svg>
+    <div class="tip" id="tip"></div>
+  </div>
+</div>
+
+<script>
+/* ------------------------------------------------------------------
+   IMPORTANT: Ce dataset est un EXEMPLE. En prod, il faut construire
+   le graphe à partir du tableau réel (valeurs, supports, événements).
+------------------------------------------------------------------- */
+const nodes = [
+  {id:"V1", type:"valeur", label:"Gestion RH"},
+  {id:"V2", type:"valeur", label:"Facturation"},
+  {id:"V3", type:"valeur", label:"Suivi Clients"},
+  {id:"S1", type:"support", label:"Base RH"},
+  {id:"S2", type:"support", label:"Serveur Finance"},
+  {id:"S3", type:"support", label:"CRM"},
+  {id:"E1", type:"event",  label:"Fuite données", severity:4},
+  {id:"E2", type:"event",  label:"Indispo appli", severity:3},
+  {id:"E3", type:"event",  label:"Fraude paiement", severity:2},
+  {id:"E4", type:"event",  label:"Erreur saisie", severity:1}
+];
+const links = [
+  {id:"L1", source:"V1", target:"S1", weight:2},
+  {id:"L2", source:"V2", target:"S2", weight:3},
+  {id:"L3", source:"V3", target:"S3", weight:2},
+  {id:"L4", source:"S1", target:"E1", weight:1},
+  {id:"L5", source:"S1", target:"E2", weight:1},
+  {id:"L6", source:"S2", target:"E2", weight:2},
+  {id:"L7", source:"S2", target:"E3", weight:1},
+  {id:"L8", source:"S3", target:"E4", weight:1},
+  {id:"L9", source:"S3", target:"E1", weight:1}
+];
+
+/* -------------------- Couleurs / calculs -------------------- */
+const sevColor = s => ({1:"var(--g1)",2:"var(--g2)",3:"var(--g3)",4:"var(--g4)"}[s] || "var(--neutral)");
+const byId = Object.fromEntries(nodes.map(n=>[n.id,n]));
+const outEdges = {}, inEdges = {};
+links.forEach(l=>{ (outEdges[l.source] ||= []).push(l); (inEdges[l.target] ||= []).push(l); });
+
+function maxSevSupport(sId){
+  let max=0;
+  (outEdges[sId]||[]).forEach(l=>{
+    const t=byId[l.target];
+    if(t && t.type==="event") max=Math.max(max,t.severity||0);
+  });
+  return max;
+}
+function maxSevValue(vId){
+  let max=0;
+  (outEdges[vId]||[]).forEach(l=>{
+    const s=byId[l.target];
+    if(s && s.type==="support") max=Math.max(max,maxSevSupport(s.id));
+  });
+  return max;
+}
+function fillForNode(n){
+  if(n.type==="event")   return sevColor(n.severity||0);
+  if(n.type==="support") return sevColor(maxSevSupport(n.id)||0);
+  if(n.type==="valeur")  return sevColor(maxSevValue(n.id)||0);
+  return "var(--neutral)";
+}
+
+/* ------------------------ Layout ------------------------ */
+const X={valeur:160,support:540,event:900}, groups={valeur:[],support:[],event:[]};
+nodes.forEach(n=>groups[n.type].push(n));
+const top=80,gap=100;
+Object.keys(groups).forEach(t=>groups[t].forEach((n,i)=>{n.x=X[t];n.y=top+i*gap;}));
+
+/* ------------------------ SVG ------------------------ */
+const NS="http://www.w3.org/2000/svg", svg=document.getElementById("viz"), tip=document.getElementById("tip");
+const nodeEls={}, linkEls={};
+
+function bindTooltip(el,txtFn){
+  el.addEventListener("mousemove",(e)=>{tip.style.left=e.clientX+"px";tip.style.top=e.clientY+"px";tip.textContent=txtFn();tip.style.opacity=1;});
+  el.addEventListener("mouseleave",()=>tip.style.opacity=0);
+}
+
+/* surbrillance connexions */
+function collectConnected(id){
+  const N=new Set([id]); const L=new Set(); const q=[id]; const seen=new Set([id]);
+  while(q.length){
+    const cur=q.shift();
+    (outEdges[cur]||[]).forEach(l=>{L.add(l.id);N.add(l.target);if(!seen.has(l.target)){seen.add(l.target);q.push(l.target);} });
+    (inEdges[cur]||[]).forEach(l=>{L.add(l.id);N.add(l.source);if(!seen.has(l.source)){seen.add(l.source);q.push(l.source);} });
+  }
+  return {nodes:N,links:L};
+}
+function applyHighlight(keep){
+  Object.values(nodeEls).forEach(g=>g.classList.add("dim"));
+  Object.values(linkEls).forEach(p=>p.classList.add("dim"));
+  keep.nodes.forEach(id=>{const el=nodeEls[id]; if(el){el.classList.remove("dim"); el.classList.add("hi-node");}});
+  keep.links.forEach(id=>{const el=linkEls[id]; if(el){el.classList.remove("dim"); el.classList.add("hi-link");}});
+}
+function clearHighlight(){
+  Object.values(nodeEls).forEach(g=>g.classList.remove("dim","hi-node"));
+  Object.values(linkEls).forEach(p=>p.classList.remove("dim","hi-link"));
+}
+
+/* liens (derrière) */
+function drawLink(l){
+  const a=byId[l.source], b=byId[l.target];
+  const path=document.createElementNS(NS,"path");
+  const bend=160, x1=a.x, y1=a.y, x2=b.x, y2=b.y;
+  path.setAttribute("class","link");
+  path.setAttribute("id",l.id);
+  path.setAttribute("stroke-width",Math.max(3,(l.weight||1)*4));
+  path.setAttribute("d",`M ${x1+40} ${y1} C ${x1+40+bend} ${y1}, ${x2-40-bend} ${y2}, ${x2-40} ${y2}`);
+  bindTooltip(path,()=>`${a.label} → ${b.label}`);
+  svg.appendChild(path);
+  linkEls[l.id]=path;
+}
+
+/* noeuds (devant) */
+function drawNode(n){
+  const g=document.createElementNS(NS,"g");
+  g.setAttribute("id",n.id);
+  g.setAttribute("transform",`translate(${n.x},${n.y})`);
+
+  let shape;
+  if(n.type==="valeur"){
+    // cercle (texte en dessous, centré)
+    shape=document.createElementNS(NS,"circle");
+    shape.setAttribute("r",26);
+  }else if(n.type==="support"){
+    // hexagone (texte en dessous, centré)
+    shape=document.createElementNS(NS,"polygon");
+    shape.setAttribute("points","-30,0 -15,-26 15,-26 30,0 15,26 -15,26");
+  }else{
+    // triangle pointe droite (texte à droite)
+    shape=document.createElementNS(NS,"polygon");
+    shape.setAttribute("points","-34,-26 -34,26 24,0");
+  }
+  shape.setAttribute("class","shape");
+  shape.setAttribute("fill",fillForNode(n));
+  g.appendChild(shape);
+
+  const t=document.createElementNS(NS,"text");
+  if(n.type==="event"){
+    t.setAttribute("class","lbl");
+    t.setAttribute("x",44); t.setAttribute("y",4);
+    t.textContent = `${n.label} [G${n.severity||"-"}]`;
+  }else{
+    t.setAttribute("class","lbl center");
+    t.setAttribute("x",0); t.setAttribute("y",40); // sous la forme
+    t.textContent = n.label;
+  }
+  g.appendChild(t);
+
+  // interactions survol = mise en évidence des éléments liés
+  g.addEventListener("mouseenter",()=>{ const keep=collectConnected(n.id); applyHighlight(keep); });
+  g.addEventListener("mouseleave", clearHighlight);
+
+  // tooltip
+  bindTooltip(g,()=>{
+    if(n.type==="event")   return `${n.label} (G${n.severity})`;
+    if(n.type==="support") return `${n.label} — max sev: ${maxSevSupport(n.id)||"-"}`;
+    if(n.type==="valeur")  return `${n.label} — max sev: ${maxSevValue(n.id)||"-"}`;
+    return n.label;
+  });
+
+  svg.appendChild(g);
+  nodeEls[n.id]=g;
+}
+
+/* dessin */
+links.forEach(drawLink);
+nodes.forEach(drawNode);
+</script>
+</body>
+</html>
