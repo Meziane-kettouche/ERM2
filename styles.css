@@ -1161,20 +1161,22 @@ canvas {
 /* Gantt chart styles for Atelier 5 */
 :root {
   --bg: #0f172a;
-  --panel: #111827;
+  --panel: #0b1228;
   --grid: #1f2937;
-  --axis: #9ca3af;
+  --axis: #cbd5e1;
+  --axis-dim: #94a3b8;
   --bar: #3b82f6;
   --bar-hover: #60a5fa;
   --text: #e5e7eb;
   --muted: #9ca3af;
   --today: #ef4444;
+  --hilite: #f59e0b;
 }
 
 .wrap {
-  max-width: 1100px;
-  margin: 24px auto;
-  padding: 16px;
+  width: 100vw;
+  margin: 0;
+  padding: 12px;
 }
 
 .card {
@@ -1188,9 +1190,10 @@ canvas {
 .controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   color: var(--muted);
   margin: 0 0 8px;
+  flex-wrap: wrap;
 }
 
 .legend {
@@ -1209,7 +1212,8 @@ canvas {
 }
 
 .chart {
-  width: 100%;
+  width: 100vw;
+  height: 70vh;
   overflow: auto;
   border: 1px solid #0b1228;
   border-radius: 12px;
@@ -1235,20 +1239,29 @@ svg {
 .ylabels text {
   fill: var(--text);
   font-size: 12px;
+  cursor: pointer;
+}
+.ylabels text:hover {
+  fill: #fff;
+  text-decoration: underline;
 }
 
 .bar {
   fill: var(--bar);
   cursor: pointer;
-  rx: 6;
-  ry: 6;
-  transition: filter 0.15s, transform 0.15s;
+  rx: 5;
+  ry: 5;
+  transition: filter 0.12s, transform 0.12s;
 }
 
 .bar:hover {
   fill: var(--bar-hover);
   filter: brightness(1.05) drop-shadow(0 2px 6px rgba(59, 130, 246, 0.35));
   transform: translateY(-1px);
+}
+.bar.hi {
+  outline: 2px solid var(--hilite);
+  filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.6));
 }
 
 .today-line {
