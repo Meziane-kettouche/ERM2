@@ -600,32 +600,29 @@
   }
 
   // ----- Atelier 1: Qualification des biens supports -----
-  function setVulnLevelColor(selectEl) {
-    const lvl = (selectEl.value || '').toLowerCase();
-    let color = '#ccc';
-    switch (lvl) {
+  function vulnLevelColor(lvl) {
+    switch ((lvl || '').toLowerCase()) {
       case 'info':
-        color = '#6c757d';
-        break;
+        return '#6c757d';
       case 'faible':
-        color = '#f9e79f';
-        break;
+        return '#f9e79f';
       case 'moderee':
-        color = '#f4a261';
-        break;
+        return '#f4a261';
       case 'forte':
       case 'fort':
-        color = '#8b0000';
-        selectEl.style.color = '#fff';
-        break;
+        return '#8b0000';
       case 'critique':
-        color = '#000';
-        selectEl.style.color = '#fff';
-        break;
+        return '#000';
       default:
-        selectEl.style.color = '';
+        return '#ccc';
     }
-    if (lvl !== 'critique' && lvl !== 'forte' && lvl !== 'fort') selectEl.style.color = '';
+  }
+
+  function setVulnLevelColor(selectEl) {
+    const lvl = (selectEl.value || '').toLowerCase();
+    const color = vulnLevelColor(lvl);
+    if (lvl === 'forte' || lvl === 'fort' || lvl === 'critique') selectEl.style.color = '#fff';
+    else selectEl.style.color = '';
     selectEl.style.backgroundColor = color;
   }
 
@@ -755,6 +752,7 @@
           v.level = e.target.value;
           saveAnalyses();
           setVulnLevelColor(vLevel);
+          renderVulnChart();
         };
         const rmV = document.createElement('button');
         rmV.textContent = '×';
@@ -801,6 +799,30 @@
       tbody.appendChild(tr);
     });
     addDataTableResizers('supports-qualif-table');
+    renderVulnChart();
+  }
+
+  function renderVulnChart() {
+    const canvas = document.getElementById('vuln-level-chart');
+    if (!canvas) return;
+    const analysis = analyses[currentIndex];
+    if (!analysis || !analysis.data) {
+      clearCanvas(canvas);
+      return;
+    }
+    const levels = ['info','faible','moderee','forte','critique'];
+    const counts = { info:0, faible:0, moderee:0, forte:0, critique:0 };
+    (analysis.data.supportsQualif || []).forEach(s => {
+      (s.vulnerabilities || []).forEach(v => {
+        const lvl = (v.level || '').toLowerCase();
+        if (counts.hasOwnProperty(lvl)) counts[lvl]++;
+      });
+    });
+    const labels = levels.map(l => l.charAt(0).toUpperCase() + l.slice(1));
+    const data = levels.map(l => counts[l]);
+    const colors = levels.map(l => vulnLevelColor(l));
+    if (data.some(v => v > 0)) drawBarChart(canvas, labels, data, colors);
+    else clearCanvas(canvas);
   }
 
   // ----- Atelier 1: Évènements (table rendering)
@@ -3811,6 +3833,7 @@
         row.residualLevel = e.target.value;
         saveAnalyses();
         setVulnLevelColor(resSel);
+        renderSupportLevelChart();
         renderPlanActions();
       });
       tdRes.appendChild(resSel);
@@ -3964,7 +3987,37 @@
       body.appendChild(tr);
     });
     addDataTableResizers('support-actions-table');
+    renderSupportLevelChart();
     // Add row button is outside in HTML
+  }
+
+  function renderSupportLevelChart() {
+    const canvas = document.getElementById('support-level-chart');
+    if (!canvas) return;
+    const analysis = analyses[currentIndex];
+    if (!analysis || !analysis.data) {
+      clearCanvas(canvas);
+      return;
+    }
+    if (!Array.isArray(analysis.data.actionsSupports)) {
+      clearCanvas(canvas);
+      return;
+    }
+    const levels = ['info','faible','moderee','forte','critique'];
+    const initCounts = { info:0, faible:0, moderee:0, forte:0, critique:0 };
+    const residCounts = { info:0, faible:0, moderee:0, forte:0, critique:0 };
+    analysis.data.actionsSupports.forEach(row => {
+      const init = (row.initialLevel || '').toLowerCase();
+      const res = (row.residualLevel || '').toLowerCase();
+      if (initCounts.hasOwnProperty(init)) initCounts[init]++;
+      if (residCounts.hasOwnProperty(res)) residCounts[res]++;
+    });
+    const labels = levels.map(l => l.charAt(0).toUpperCase() + l.slice(1));
+    const dataA = levels.map(l => initCounts[l]);
+    const dataB = levels.map(l => residCounts[l]);
+    const colors = levels.map(l => vulnLevelColor(l));
+    if (dataA.some(v=>v>0) || dataB.some(v=>v>0)) drawGroupedBarChart(canvas, labels, dataA, dataB, colors);
+    else clearCanvas(canvas);
   }
 
   // Render actions for parties: allow user to add rows referencing stakeholders
@@ -4637,6 +4690,63 @@
     });
   }
 
+  function drawGroupedBarChart(canvas, labels, dataA, dataB, colors) {
+    const ctx = canvas.getContext('2d');
+    clearCanvas(canvas);
+    if (!labels || labels.length === 0) return;
+    const width = canvas.width;
+    const height = canvas.height;
+    const margin = 40;
+    const groupWidth = (width - margin * 2) / labels.length;
+    const barWidth = groupWidth * 0.35;
+    const maxVal = Math.max(...dataA, ...dataB, 1);
+    // axes
+    ctx.strokeStyle = 'rgba(200,200,200,0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(margin, margin);
+    ctx.lineTo(margin, height - margin);
+    ctx.lineTo(width - margin, height - margin);
+    ctx.stroke();
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    // legend
+    ctx.fillStyle = 'var(--text-secondary)';
+    ctx.fillRect(margin, margin - 30, 12, 12);
+    ctx.fillText('Initial', margin + 26, margin - 20);
+    ctx.globalAlpha = 0.4;
+    ctx.fillStyle = 'var(--text-secondary)';
+    ctx.fillRect(margin + 80, margin - 30, 12, 12);
+    ctx.globalAlpha = 1;
+    ctx.fillText('Résiduel', margin + 106, margin - 20);
+    // bars
+    labels.forEach((lab, i) => {
+      const baseX = margin + i * groupWidth;
+      const color = colors && colors[i] ? colors[i] : '#888';
+      const h1 = (dataA[i] / maxVal) * (height - margin * 2);
+      const h2 = (dataB[i] / maxVal) * (height - margin * 2);
+      const y1 = height - margin - h1;
+      const y2 = height - margin - h2;
+      const x1 = baseX + groupWidth * 0.1;
+      const x2 = baseX + groupWidth * 0.55;
+      ctx.fillStyle = color;
+      ctx.fillRect(x1, y1, barWidth, h1);
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 0.4;
+      ctx.fillRect(x2, y2, barWidth, h2);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = 'var(--text-primary)';
+      ctx.fillText(dataA[i], x1 + barWidth / 2, y1 - 4);
+      ctx.fillText(dataB[i], x2 + barWidth / 2, y2 - 4);
+      ctx.fillStyle = 'var(--text-secondary)';
+      ctx.save();
+      ctx.translate(baseX + groupWidth / 2, height - margin + 14);
+      ctx.rotate(-Math.PI / 4);
+      ctx.fillText(lab, 0, 0);
+      ctx.restore();
+    });
+  }
+
   function drawRadarChart(canvas, labels, dataset) {
     const ctx = canvas.getContext('2d');
     clearCanvas(canvas);
@@ -4783,8 +4893,8 @@
 
   // ----- Chart updates per atelier
   function updateAtelier1Chart() {
-    // The bar chart for Atelier 1 has been replaced by a network graph.
     updateAtelier1Graph();
+    renderVulnChart();
   }
 
   function updateAtelier2Chart() {
@@ -5126,6 +5236,7 @@
 
   function updateAtelier5Chart() {
     renderRisquesChart();
+    renderSupportLevelChart();
   }
 
   // ----- Event handlers for adding items
