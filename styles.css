@@ -315,9 +315,10 @@ input[type="text"]:focus, input[type="number"]:focus, textarea:focus {
 
 /* Charts */
 .chart-canvas {
+  display: block;
   width: 100%;
   max-width: 700px;
-  margin-top: 1rem;
+  margin: 0 auto;
   background-color: var(--bg-panel);
   border-radius: var(--border-radius);
   padding: 0.5rem;
@@ -639,10 +640,10 @@ input[type="text"]:focus, input[type="number"]:focus, textarea:focus {
   background-color: var(--bg-light);
 }
 
-/* Layout helper for ateliers: two‑column grid to separate forms and charts */
+/* Layout helper for ateliers */
 .atelier-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   grid-gap: 1rem;
   align-items: flex-start;
 }
@@ -664,6 +665,10 @@ input[type="text"]:focus, input[type="number"]:focus, textarea:focus {
   overflow-x: auto;
   /* Keep charts readable by preventing excessive shrinkage */
   min-width: 350px;
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto 1rem;
+  position: relative;
 }
 
 /* Supports list inside missions */
@@ -758,17 +763,6 @@ canvas {
   flex-shrink: 0;
 }
 
-/* Adjust atelier grid when gap tab is active to use full width */
-.atelier-grid.gap-active {
-  grid-template-columns: 1fr;
-}
-
-/* When the cartography tab is active in Atelier 3, collapse the grid
-   to a single column so that the chart appears below the table rather
-   than beside it.  This class is toggled via JavaScript. */
-.atelier-grid.carto-active {
-  grid-template-columns: 1fr;
-}
 
 /* Association cell styling for cartography (supports and valeurs).  Each
    selected item is displayed as a small tag with a remove button and
