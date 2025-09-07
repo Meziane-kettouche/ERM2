@@ -72,6 +72,15 @@
                 </div>
                 <h2>Valeurs métier et biens supports</h2>
               <p>Chaque valeur métier comporte une dénomination, une nature (information, processus, fonction), une description, un responsable et des biens supports associés (nom, description, responsable). Chaque valeur peut également comporter un ou plusieurs évènements redoutés avec niveau et description des impacts.</p>
+              <div class="graph-wrapper">
+                <svg id="viz" viewBox="0 0 1100 560" preserveAspectRatio="xMidYMid meet"></svg>
+                <div class="tip" id="tip"></div>
+                <div class="graph-legend">
+                  <span><svg width="20" height="20"><circle cx="10" cy="10" r="8" fill="var(--neutral)"/></svg> Valeur métier</span>
+                  <span><svg width="20" height="20"><polygon points="10,2 17,6 17,14 10,18 3,14 3,6" fill="var(--neutral)"/></svg> Bien support</span>
+                  <span><svg width="20" height="20"><polygon points="4,4 4,16 16,10" fill="var(--neutral)"/></svg> Évènement redouté</span>
+                </div>
+              </div>
               <table id="missions-table" class="data-table">
                 <thead>
                   <tr>

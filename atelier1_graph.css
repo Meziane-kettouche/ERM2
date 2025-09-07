@@ -1,3 +1,11 @@
+:root {
+  --g1:#22c55e;
+  --g2:#eab308;
+  --g3:#f97316;
+  --g4:#ef4444;
+  --neutral:#6ea8fe;
+}
+
 .graph-wrapper {
   background:#0b1422;
   border:1px solid #203656;
@@ -51,5 +59,19 @@
   opacity:0;
   transform:translate(-50%,-120%);
   transition:opacity .12s;
+}
+
+.graph-legend {
+  display:flex;
+  gap:1rem;
+  justify-content:center;
+  margin-top:6px;
+  font-size:12px;
+}
+
+.graph-legend span {
+  display:flex;
+  align-items:center;
+  gap:4px;
 }
 
