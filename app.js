@@ -3086,6 +3086,7 @@
         renderStrategies();
       };
     }
+    updateAtelier3Chart();
   }
 
   // Add resizer handles to the strategies table
@@ -5136,38 +5137,129 @@
     });
   }
 
+  function renderStrategicGraph() {
+    const analysis = analyses[currentIndex];
+    if (!analysis || !analysis.data) return;
+    const svg = document.getElementById('strategic-canvas');
+    const gNodes = document.getElementById('strategic-nodes');
+    const gLinks = document.getElementById('strategic-links');
+    const tip = document.getElementById('strategic-tip');
+    if (!svg || !gNodes || !gLinks || !tip) return;
+    gNodes.innerHTML = '';
+    gLinks.innerHTML = '';
+
+    const strategies = analysis.data.strategies || [];
+    const ppList = analysis.data.ppc || [];
+    const evList = analysis.data.events || [];
+
+    const nodeMap = new Map();
+    const links = [];
+    const addNode = (key, type, label, details, severity) => {
+      if (!key || nodeMap.has(key)) return nodeMap.get(key);
+      const n = { id: key, type, label, details, severity };
+      nodeMap.set(key, n);
+      return n;
+    };
+
+    strategies.forEach(st => {
+      if (!st.source || !st.objectif) return;
+      const src = addNode('S:' + st.source, 'source', st.source);
+      const obj = addNode('O:' + st.objectif, 'objective', st.objectif);
+      if (src && obj) links.push({ from: src, to: obj });
+      (st.chemins || []).forEach(ch => {
+        const atk = addNode('C:' + ch, 'attack', ch);
+        if (obj && atk) links.push({ from: obj, to: atk });
+        (st.intermediaireIds || []).forEach(ppId => {
+          const pp = ppList.find(p => p.id === ppId);
+          const label = pp ? (pp.nom || 'PP') : ppId;
+          const inter = addNode('I:' + ppId, 'inter', label);
+          if (atk && inter) links.push({ from: atk, to: inter });
+          (st.eventIds || []).forEach(evId => {
+            const ev = evList.find(e => e.id === evId);
+            const labelEv = ev ? (ev.evenement || ev.ref || 'Évènement') : evId;
+            const sev = ev ? parseInt(ev.impact, 10) || 0 : 0;
+            const evNode = addNode('E:' + evId, 'event', labelEv, '', sev);
+            if (inter && evNode) links.push({ from: inter, to: evNode });
+          });
+        });
+      });
+    });
+
+    const nodes = Array.from(nodeMap.values());
+    const byType = {};
+    nodes.forEach(n => { (byType[n.type] ||= []).push(n); });
+    const laneX = { source:110, objective:320, attack:540, inter:760, event:1000 };
+    const laneTop = 70, laneBottom = 500, gapY = 70;
+    Object.keys(byType).forEach(t => {
+      byType[t].forEach((n,i) => {
+        n.x = laneX[t];
+        n.y = Math.min(laneTop + i*gapY, laneBottom);
+      });
+    });
+
+    const colorByType = {
+      source: 'var(--source)',
+      objective: 'var(--objective)',
+      attack: 'var(--attack)',
+      inter: 'var(--inter)'
+    };
+    const sevColor = { 1:'var(--g1)', 2:'var(--g2)', 3:'var(--g3)', 4:'var(--g4)' };
+
+    function makeNode(n){
+      const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+      g.classList.add('node');
+      if (n.type === 'attack' || n.type === 'inter') g.classList.add('small');
+      g.setAttribute('transform',`translate(${n.x-95},${n.y-22})`);
+      const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      rect.setAttribute('width',190);
+      rect.setAttribute('height',44);
+      const fill = (n.type === 'event') ? (sevColor[n.severity] || 'var(--g2)') : (colorByType[n.type] || 'var(--panel)');
+      rect.setAttribute('fill', fill);
+      g.appendChild(rect);
+      const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+      txt.setAttribute('x',12); txt.setAttribute('y',26);
+      txt.textContent = (n.type === 'event' && n.severity) ? `${n.label} [G${n.severity}]` : n.label;
+      g.appendChild(txt);
+      g.addEventListener('mousemove', e => {
+        if (!n.details) return;
+        tip.style.left = e.clientX + 'px';
+        tip.style.top = e.clientY + 'px';
+        const extra = (n.type === 'event' && n.severity) ? ` | Gravité: ${n.severity}` : '';
+        tip.textContent = n.details + extra;
+        tip.style.opacity = 1;
+      });
+      g.addEventListener('mouseleave', () => tip.style.opacity = 0);
+      gNodes.appendChild(g);
+    }
+
+    function linkPath(a,b){
+      const bend = Math.max(20, Math.min(140, Math.abs(b.x - a.x)/2.5));
+      const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+      p.setAttribute('class','link');
+      const d = `M ${a.x+95} ${a.y} C ${a.x+95+bend} ${a.y}, ${b.x-95-bend} ${b.y}, ${b.x-95} ${b.y}`;
+      p.setAttribute('d', d);
+      gLinks.appendChild(p);
+    }
+
+    nodes.forEach(makeNode);
+    links.forEach(l => linkPath(l.from, l.to));
+  }
+
   function updateAtelier3Chart() {
     const analysis = analyses[currentIndex];
     if (!analysis || !analysis.data) return;
-    const canvas = document.getElementById('atelier3-chart');
     const radarWrap = document.getElementById('atelier3-radar-wrapper');
+    const graphWrap = document.getElementById('strategic-graph');
     const cartoActive = document.getElementById('atelier3-carto-tab')?.classList.contains('active');
     if (cartoActive) {
       if (radarWrap) radarWrap.style.display = 'block';
-      if (canvas) canvas.style.display = 'none';
+      if (graphWrap) graphWrap.style.display = 'none';
       const ppc = analysis.data.ppc || [];
       renderCartoRadar(ppc);
     } else {
       if (radarWrap) radarWrap.style.display = 'none';
-      if (canvas) canvas.style.display = 'block';
-      const strategies = analysis.data.strategies || [];
-      const counts = {};
-      strategies.forEach(st => {
-        let maxImpact = 0;
-        (st.eventIds || []).forEach(evId => {
-          const ev = (analysis.data.events || []).find(e => e.id === evId);
-          const imp = ev ? parseInt(ev.impact, 10) || 0 : 0;
-          if (imp > maxImpact) maxImpact = imp;
-        });
-        const key = maxImpact > 0 ? String(maxImpact) : '0';
-        counts[key] = (counts[key] || 0) + 1;
-      });
-      const labels = Object.keys(counts);
-      const data = labels.map(l => counts[l]);
-      if (canvas) {
-        if (labels.length > 0) drawBarChart(canvas, labels, data);
-        else clearCanvas(canvas);
-      }
+      if (graphWrap) graphWrap.style.display = 'block';
+      renderStrategicGraph();
     }
   }
 
