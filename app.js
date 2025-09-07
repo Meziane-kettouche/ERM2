@@ -616,16 +616,16 @@
       case 'info':
         return '#6c757d';
       case 'faible':
-        return '#f9e79f';
+        return '#2a9d8f';
       case 'moderee':
-        return '#f4a261';
+        return '#e9c46a';
       case 'forte':
       case 'fort':
-        return '#8b0000';
+        return '#f4a261';
       case 'critique':
-        return '#000';
+        return '#e63946';
       default:
-        return '#ccc';
+        return '#9aa0a6';
     }
   }
 
@@ -4637,7 +4637,10 @@
   // ----- Chart drawing functions (simple bar and radar charts)
   function clearCanvas(canvas) {
     const ctx = canvas.getContext('2d');
+    const bg = getComputedStyle(canvas).getPropertyValue('background-color') || '#fff';
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
 
   function drawBarChart(canvas, labels, data, colors) {
@@ -4650,31 +4653,36 @@
     const barAreaWidth = width - margin * 2;
     const barWidth = barAreaWidth / labels.length;
     const maxVal = Math.max(...data, 1);
+    const style = getComputedStyle(document.documentElement);
+    const textPrimary = style.getPropertyValue('--text-primary') || '#e6e9ef';
+    const textSecondary = style.getPropertyValue('--text-secondary') || '#8aa0c4';
+    const axisColor = textSecondary || 'rgba(200,200,200,0.5)';
     // Draw axes
-    ctx.strokeStyle = 'rgba(200,200,200,0.5)';
+    ctx.strokeStyle = axisColor;
+    ctx.globalAlpha = 0.4;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(margin, margin);
     ctx.lineTo(margin, height - margin);
     ctx.lineTo(width - margin, height - margin);
     ctx.stroke();
-    ctx.font = '12px sans-serif';
-    ctx.fillStyle = 'var(--text-secondary)';
+    ctx.globalAlpha = 1;
+    ctx.font = '12px system-ui';
+    ctx.textAlign = 'center';
     // Draw bars
     data.forEach((value, i) => {
       const barHeight = (value / maxVal) * (height - margin * 2);
       const x = margin + i * barWidth + barWidth * 0.2;
       const y = height - margin - barHeight;
       const w = barWidth * 0.6;
-      const color = colors && colors[i] ? colors[i] : 'rgba(77,163,255,0.8)';
+      const color = colors && colors[i] ? colors[i] : '#4da3ff';
       ctx.fillStyle = color;
       ctx.fillRect(x, y, w, barHeight);
       // Value label
-      ctx.fillStyle = 'var(--text-primary)';
-      ctx.textAlign = 'center';
+      ctx.fillStyle = textPrimary;
       ctx.fillText(value, x + w / 2, y - 4);
       // Category label
-      ctx.fillStyle = 'var(--text-secondary)';
+      ctx.fillStyle = textSecondary;
       ctx.save();
       ctx.translate(x + w / 2, height - margin + 14);
       ctx.rotate(-Math.PI / 4);
@@ -4693,22 +4701,28 @@
     const groupWidth = (width - margin * 2) / labels.length;
     const barWidth = groupWidth * 0.35;
     const maxVal = Math.max(...dataA, ...dataB, 1);
+    const style = getComputedStyle(document.documentElement);
+    const textPrimary = style.getPropertyValue('--text-primary') || '#e6e9ef';
+    const textSecondary = style.getPropertyValue('--text-secondary') || '#8aa0c4';
+    const axisColor = textSecondary || 'rgba(200,200,200,0.5)';
     // axes
-    ctx.strokeStyle = 'rgba(200,200,200,0.5)';
+    ctx.strokeStyle = axisColor;
+    ctx.globalAlpha = 0.4;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(margin, margin);
     ctx.lineTo(margin, height - margin);
     ctx.lineTo(width - margin, height - margin);
     ctx.stroke();
-    ctx.font = '12px sans-serif';
+    ctx.globalAlpha = 1;
+    ctx.font = '12px system-ui';
     ctx.textAlign = 'center';
     // legend
-    ctx.fillStyle = 'var(--text-secondary)';
+    ctx.fillStyle = textSecondary;
     ctx.fillRect(margin, margin - 30, 12, 12);
     ctx.fillText('Initial', margin + 26, margin - 20);
+    ctx.fillStyle = textSecondary;
     ctx.globalAlpha = 0.4;
-    ctx.fillStyle = 'var(--text-secondary)';
     ctx.fillRect(margin + 80, margin - 30, 12, 12);
     ctx.globalAlpha = 1;
     ctx.fillText('Résiduel', margin + 106, margin - 20);
@@ -4724,14 +4738,13 @@
       const x2 = baseX + groupWidth * 0.55;
       ctx.fillStyle = color;
       ctx.fillRect(x1, y1, barWidth, h1);
-      ctx.fillStyle = color;
       ctx.globalAlpha = 0.4;
       ctx.fillRect(x2, y2, barWidth, h2);
       ctx.globalAlpha = 1;
-      ctx.fillStyle = 'var(--text-primary)';
+      ctx.fillStyle = textPrimary;
       ctx.fillText(dataA[i], x1 + barWidth / 2, y1 - 4);
       ctx.fillText(dataB[i], x2 + barWidth / 2, y2 - 4);
-      ctx.fillStyle = 'var(--text-secondary)';
+      ctx.fillStyle = textSecondary;
       ctx.save();
       ctx.translate(baseX + groupWidth / 2, height - margin + 14);
       ctx.rotate(-Math.PI / 4);
