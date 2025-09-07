@@ -1157,3 +1157,141 @@ canvas {
   transform: translate(-50%, -12px);
   white-space: nowrap;
 }
+
+/* Gantt chart styles for Atelier 5 */
+:root {
+  --bg: #0f172a;
+  --panel: #111827;
+  --grid: #1f2937;
+  --axis: #9ca3af;
+  --bar: #3b82f6;
+  --bar-hover: #60a5fa;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --today: #ef4444;
+}
+
+.wrap {
+  max-width: 1100px;
+  margin: 24px auto;
+  padding: 16px;
+}
+
+.card {
+  background: linear-gradient(180deg, #0b1228, #0a0f1f);
+  border: 1px solid #0b1228;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  margin: 0 0 8px;
+}
+
+.legend {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-left: auto;
+}
+
+.legend i {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  margin-right: 6px;
+}
+
+.chart {
+  width: 100%;
+  overflow: auto;
+  border: 1px solid #0b1228;
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.axis text {
+  fill: var(--axis);
+  font-size: 12px;
+}
+
+.grid line {
+  stroke: var(--grid);
+  stroke-width: 1;
+}
+
+.ylabels text {
+  fill: var(--text);
+  font-size: 12px;
+}
+
+.bar {
+  fill: var(--bar);
+  cursor: pointer;
+  rx: 6;
+  ry: 6;
+  transition: filter 0.15s, transform 0.15s;
+}
+
+.bar:hover {
+  fill: var(--bar-hover);
+  filter: brightness(1.05) drop-shadow(0 2px 6px rgba(59, 130, 246, 0.35));
+  transform: translateY(-1px);
+}
+
+.today-line {
+  stroke: var(--today);
+  stroke-width: 2;
+  stroke-dasharray: 4 4;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, calc(-100% - 12px));
+  background: #0b1228;
+  color: var(--text);
+  border: 1px solid #1f2a44;
+  border-radius: 12px;
+  padding: 10px 12px;
+  min-width: 220px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  transition: opacity 0.08s ease-out;
+}
+
+.tooltip .title {
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+
+.tooltip .row {
+  display: flex;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

@@ -4359,8 +4359,8 @@
   // Aggregate all actions and render plan table + gantt chart
   function renderPlanActions() {
     const body = document.getElementById('plan-actions-body');
-    const canvas = document.getElementById('gantt-chart');
-    if (!body || !canvas) return;
+    const chartEl = document.getElementById('gantt-chart');
+    if (!body || !chartEl) return;
     body.innerHTML = '';
     const analysis = analyses[currentIndex];
     if (!analysis || !analysis.data) return;
@@ -4436,61 +4436,8 @@
     });
     addDataTableResizers('plan-actions-table');
     // Draw gantt chart
-    drawGanttChart(canvas, actions);
-  }
-
-  // Draw a simple Gantt chart on a canvas from a list of actions with start/end dates
-  function drawGanttChart(canvas, actions) {
-    const ctx = canvas.getContext('2d');
-    // Clear
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (!actions || actions.length === 0) return;
-    // Parse dates
-    const parsed = actions.map(act => {
-      const start = act.start ? new Date(act.start) : null;
-      const end = act.end ? new Date(act.end) : null;
-      return { act, start, end };
-    }).filter(item => item.start && item.end && !isNaN(item.start.getTime()) && !isNaN(item.end.getTime()));
-    if (parsed.length === 0) return;
-    // Determine min and max dates
-    let minDate = parsed[0].start;
-    let maxDate = parsed[0].end;
-    parsed.forEach(it => {
-      if (it.start < minDate) minDate = it.start;
-      if (it.end > maxDate) maxDate = it.end;
-    });
-    const range = maxDate - minDate;
-    const rowHeight = 18;
-    const yMargin = 20;
-    const xMargin = 60;
-    canvas.height = yMargin * 2 + rowHeight * parsed.length;
-    // Draw axes
-    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-    ctx.beginPath();
-    ctx.moveTo(xMargin, yMargin);
-    ctx.lineTo(xMargin, canvas.height - yMargin);
-    ctx.lineTo(canvas.width - 10, canvas.height - yMargin);
-    ctx.stroke();
-    parsed.forEach((item, index) => {
-      const x = xMargin + ((item.start - minDate) / range) * (canvas.width - xMargin - 20);
-      const w = ((item.end - item.start) / range) * (canvas.width - xMargin - 20);
-      const y = yMargin + index * rowHeight + 4;
-      ctx.fillStyle = 'rgba(77,163,255,0.6)';
-      ctx.fillRect(x, y, w, rowHeight - 8);
-      ctx.fillStyle = 'var(--text-primary)';
-      ctx.font = '12px sans-serif';
-      ctx.fillText(item.act.name, 2, y + rowHeight - 12);
-    });
-    // Draw date labels on x-axis
-    const tickCount = Math.min(6, parsed.length > 0 ? parsed.length + 1 : 1);
-    for (let i = 0; i < tickCount; i++) {
-      const t = minDate.getTime() + (range * i) / (tickCount - 1);
-      const date = new Date(t);
-      const x = xMargin + (i / (tickCount - 1)) * (canvas.width - xMargin - 20);
-      const label = date.toISOString().slice(0, 10);
-      ctx.fillStyle = 'var(--text-secondary)';
-      ctx.font = '10px sans-serif';
-      ctx.fillText(label, x - 20, canvas.height - 5);
+    if (typeof drawGanttChartSVG === 'function') {
+      drawGanttChartSVG(chartEl, actions);
     }
   }
 
