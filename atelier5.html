@@ -131,8 +131,27 @@
         </div>
         <div id="atelier5-plan-tab" class="atelier5-subtab-content">
           <p>Vue consolidée de toutes les actions définies. Le diagramme de Gantt ci-dessous permet de visualiser les périodes de mise en œuvre.</p>
-          <div class="chart-wrapper">
-            <canvas id="gantt-chart" width="800" height="300" class="chart-canvas"></canvas>
+          <div class="wrap">
+            <div class="card">
+              <h1>Atelier 5 — Diagramme de Gantt</h1>
+              <div class="controls">
+                <span>Astuce: cliquez un nom d action pour y aller directement.</span>
+                <div class="legend">
+                  <span><i style="background:var(--bar)"></i>Action</span>
+                  <span><i style="background:var(--today)"></i>Aujourd hui</span>
+                  <span><i style="background:var(--hilite)"></i>Cible clic</span>
+                </div>
+              </div>
+              <div id="gantt-chart" class="chart" aria-label="Diagramme de Gantt des actions de l atelier 5"></div>
+            </div>
+          </div>
+
+          <div id="gantt-tooltip" class="tooltip" role="dialog" aria-live="polite">
+            <div class="title"></div>
+            <div class="row"><strong style="min-width:88px">Responsable:</strong><span class="resp"></span></div>
+            <div class="row"><strong style="min-width:88px">Debut:</strong><span class="deb"></span></div>
+            <div class="row"><strong style="min-width:88px">Fin:</strong><span class="fin"></span></div>
+            <div class="row" style="margin-top:6px"><span class="desc" style="color:#e5e7eb"></span></div>
           </div>
           <div class="table-container">
             <table id="plan-actions-table" class="data-table">
@@ -167,5 +186,6 @@
     </main>
   </div>
   <script src="app.js"></script>
+  <script src="gantt.js"></script>
 </body>
 </html>
