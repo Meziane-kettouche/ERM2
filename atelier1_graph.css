@@ -1,0 +1,55 @@
+.graph-wrapper {
+  background:#0b1422;
+  border:1px solid #203656;
+  border-radius:12px;
+  padding:10px;
+}
+.graph-wrapper svg {
+  width:100%;
+  height:560px;
+  display:block;
+  border-radius:10px;
+}
+.graph-wrapper .link {
+  fill:none;
+  stroke:#9fb5ff;
+  stroke-opacity:.85;
+  transition:opacity .12s, stroke-width .12s;
+}
+.graph-wrapper .node .shape {
+  stroke:#000;
+  stroke-opacity:.25;
+  stroke-width:1;
+}
+.graph-wrapper .lbl {
+  fill:#ffffff;
+  font-weight:600;
+  font-size:13px;
+}
+.graph-wrapper .dim {
+  opacity:.15;
+}
+.graph-wrapper .hi-node .shape {
+  stroke:#fff;
+  stroke-opacity:.9;
+  stroke-width:1.4;
+  filter:drop-shadow(0 0 4px rgba(255,255,255,.25));
+}
+.graph-wrapper .hi-link {
+  stroke-width:6;
+  stroke-opacity:1;
+}
+.graph-wrapper .tip {
+  position:fixed;
+  pointer-events:none;
+  background:#0a1626;
+  color:#ffffff;
+  border:1px solid #1b2d4a;
+  padding:6px 8px;
+  border-radius:10px;
+  font-size:12px;
+  opacity:0;
+  transform:translate(-50%,-120%);
+  transition:opacity .12s;
+}
+

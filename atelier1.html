@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EBIOS Risk Manager – Atelier 1</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="atelier1_graph.css">
 </head>
 <body>
   <div id="app">
@@ -46,11 +47,6 @@
           <button class="atelier1-subtab-btn active" data-subtab="values">Mission & Valeurs</button>
           <button class="atelier1-subtab-btn" data-subtab="gap">GAP Analysis</button>
           <button class="atelier1-subtab-btn" data-subtab="vuln">Vulnérabilité Bien support</button>
-        </div>
-        <!-- Graph area: network graph for mission/valeurs will appear here.  The
-             GAP analysis diagram is drawn dynamically in the GAP tab. -->
-        <div class="chart-wrapper">
-          <div id="atelier1-graph" class="chart-canvas" style="height:660px;"></div>
         </div>
         <!-- Grid layout for mission description, values/supports and gap analysis -->
         <div class="atelier-grid">
@@ -148,6 +144,7 @@
       </section>
     </main>
   </div>
+  <script src="atelier1_graph.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
