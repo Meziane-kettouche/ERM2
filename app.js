@@ -218,18 +218,39 @@
   }
 
   // ----- Atelier 1: Mission description
-  function renderMissionDescription() {
-    const textarea = document.getElementById('mission-description');
-    if (!textarea) return;
-    const analysis = analyses[currentIndex];
-    if (!analysis.data) analysis.data = {};
-    if (typeof analysis.data.missionDescription !== 'string') analysis.data.missionDescription = '';
-    textarea.value = analysis.data.missionDescription;
-    textarea.oninput = (e) => {
-      analysis.data.missionDescription = e.target.value;
-      saveAnalyses();
-    };
-  }
+    function renderMissionDescription() {
+      const textarea = document.getElementById('mission-description');
+      const directionInput = document.getElementById('direction');
+      const respMetierInput = document.getElementById('responsable-metier');
+      const chefProjetInput = document.getElementById('chef-projet');
+      if (!textarea || !directionInput || !respMetierInput || !chefProjetInput) return;
+      const analysis = analyses[currentIndex];
+      if (!analysis.data) analysis.data = {};
+      if (typeof analysis.data.missionDescription !== 'string') analysis.data.missionDescription = '';
+      if (typeof analysis.data.direction !== 'string') analysis.data.direction = '';
+      if (typeof analysis.data.responsableMetier !== 'string') analysis.data.responsableMetier = '';
+      if (typeof analysis.data.chefProjet !== 'string') analysis.data.chefProjet = '';
+      textarea.value = analysis.data.missionDescription;
+      directionInput.value = analysis.data.direction;
+      respMetierInput.value = analysis.data.responsableMetier;
+      chefProjetInput.value = analysis.data.chefProjet;
+      textarea.oninput = (e) => {
+        analysis.data.missionDescription = e.target.value;
+        saveAnalyses();
+      };
+      directionInput.oninput = (e) => {
+        analysis.data.direction = e.target.value;
+        saveAnalyses();
+      };
+      respMetierInput.oninput = (e) => {
+        analysis.data.responsableMetier = e.target.value;
+        saveAnalyses();
+      };
+      chefProjetInput.oninput = (e) => {
+        analysis.data.chefProjet = e.target.value;
+        saveAnalyses();
+      };
+    }
 
   // ----- Atelier 1: Valeurs et supports (table rendering)
   function renderMissionsTable() {

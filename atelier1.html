@@ -59,8 +59,22 @@
             <div id="atelier1-values-tab" class="atelier1-subtab-content active">
               <h2>Description de la mission du système</h2>
               <p>Saisissez la mission globale du système analysé.</p>
-              <textarea id="mission-description" rows="3" placeholder="Décrire la mission du système…"></textarea>
-              <h2>Valeurs métier et biens supports</h2>
+                <textarea id="mission-description" rows="3" placeholder="Décrire la mission du système…"></textarea>
+                <div class="mission-meta">
+                  <div>
+                    <label for="direction">Direction</label>
+                    <input id="direction" type="text" placeholder="Direction…" />
+                  </div>
+                  <div>
+                    <label for="responsable-metier">Responsable métier</label>
+                    <input id="responsable-metier" type="text" placeholder="Responsable métier…" />
+                  </div>
+                  <div>
+                    <label for="chef-projet">Chef de projet</label>
+                    <input id="chef-projet" type="text" placeholder="Chef de projet…" />
+                  </div>
+                </div>
+                <h2>Valeurs métier et biens supports</h2>
               <p>Chaque valeur métier comporte une dénomination, une nature (information, processus, fonction), une description, un responsable et des biens supports associés (nom, description, responsable). Chaque valeur peut également comporter un ou plusieurs évènements redoutés avec niveau et description des impacts.</p>
               <table id="missions-table" class="data-table">
                 <thead>
