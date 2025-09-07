@@ -5182,19 +5182,31 @@
       (st.chemins || []).forEach(ch => {
         const atk = addNode('C:' + ch, 'attack', ch);
         if (obj && atk) links.push({ from: obj, to: atk });
-        (st.intermediaireIds || []).forEach(ppId => {
-          const pp = ppList.find(p => p.id === ppId);
-          const label = pp ? (pp.nom || 'PP') : ppId;
-          const inter = addNode('I:' + ppId, 'inter', label);
-          if (atk && inter) links.push({ from: atk, to: inter });
-          (st.eventIds || []).forEach(evId => {
+        const inters = st.intermediaireIds || [];
+        const events = st.eventIds || [];
+        if (inters.length > 0) {
+          inters.forEach(ppId => {
+            const pp = ppList.find(p => p.id === ppId);
+            const label = pp ? (pp.nom || 'PP') : ppId;
+            const inter = addNode('I:' + ppId, 'inter', label);
+            if (atk && inter) links.push({ from: atk, to: inter });
+            events.forEach(evId => {
+              const ev = evList.find(e => e.id === evId);
+              const labelEv = ev ? (ev.evenement || ev.ref || 'Évènement') : evId;
+              const sev = ev ? parseInt(ev.impact, 10) || 0 : 0;
+              const evNode = addNode('E:' + evId, 'event', labelEv, '', sev);
+              if (inter && evNode) links.push({ from: inter, to: evNode });
+            });
+          });
+        } else {
+          events.forEach(evId => {
             const ev = evList.find(e => e.id === evId);
             const labelEv = ev ? (ev.evenement || ev.ref || 'Évènement') : evId;
             const sev = ev ? parseInt(ev.impact, 10) || 0 : 0;
             const evNode = addNode('E:' + evId, 'event', labelEv, '', sev);
-            if (inter && evNode) links.push({ from: inter, to: evNode });
+            if (atk && evNode) links.push({ from: atk, to: evNode });
           });
-        });
+        }
       });
     });
 
