@@ -5677,9 +5677,13 @@
         try {
           const json = JSON.parse(ev.target.result);
           if (Array.isArray(json)) {
+            json.forEach(a => { if (a && !a.id) a.id = uid(); });
             analyses = json;
-          } else if (typeof json === 'object') {
+          } else if (typeof json === 'object' && json !== null) {
+            if (!json.id) json.id = uid();
             analyses.push(json);
+          } else {
+            throw new Error('Invalid format');
           }
           saveAnalyses();
           currentIndex = analyses.length - 1;
