@@ -1132,6 +1132,17 @@ canvas {
   white-space: nowrap;
 }
 
+.radar-legend {
+  max-width: 700px;
+  margin: 8px auto 0 auto;
+  padding: 8px;
+  font-size: 0.85rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--text-secondary);
+  border-radius: 8px;
+  line-height: 1.4;
+}
+
 /* Gantt chart styles for Atelier 5 */
 :root {
   --bg: #0f172a;

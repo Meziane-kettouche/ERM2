@@ -70,6 +70,17 @@
     }
   }
 
+  // Map SSI level (1-4) to colour where 1=red and 4=green.
+  function ssiColor(lvl) {
+    switch (parseInt(lvl, 10)) {
+      case 1: return '#e63946';
+      case 2: return '#f4a261';
+      case 3: return '#e9c46a';
+      case 4: return '#2a9d8f';
+      default: return '#9aa0a6';
+    }
+  }
+
   // ----- Rendering functions
   function renderAnalysisList() {
     const listEl = document.getElementById('analysis-list');
@@ -2469,16 +2480,6 @@
         default: return '#9aa0a6';
       }
     };
-    // For SSI metrics (maturité, confiance) we invert colours: 1=red -> 4=green
-    const ssiColor = (lvl) => {
-      switch (parseInt(lvl, 10)) {
-        case 1: return '#e63946'; // red
-        case 2: return '#f4a261'; // orange
-        case 3: return '#e9c46a'; // yellow
-        case 4: return '#2a9d8f'; // green
-        default: return '#9aa0a6';
-      }
-    };
     // Generate table rows
     ppc.forEach((item, idx) => {
       if (!item.id) item.id = uid();
@@ -2508,7 +2509,8 @@
       const catOpts = [
         { value: 'prestataire', label: 'Prestataire' },
         { value: 'partenaire', label: 'Partenaire' },
-        { value: 'beneficiaire', label: 'Bénéficiaire' }
+        { value: 'beneficiaire', label: 'Bénéficiaire' },
+        { value: 'interne', label: 'Interne/Autre' }
       ];
       catOpts.forEach(opt => {
         const o = document.createElement('option');
@@ -2519,7 +2521,9 @@
       });
       catSelect.onchange = (e) => {
         item.categorie = e.target.value;
+        updateDerivedCells(tr, item);
         saveAnalyses();
+        updateAtelier3Chart();
       };
       td.appendChild(catSelect);
       tr.appendChild(td);
@@ -2710,6 +2714,10 @@
       td = document.createElement('td');
       td.className = 'indice-cell';
       tr.appendChild(td);
+      // Coordonnées (computed)
+      td = document.createElement('td');
+      td.className = 'coord-cell';
+      tr.appendChild(td);
       // Actions
       td = document.createElement('td');
       const delBtn = document.createElement('button');
@@ -2769,6 +2777,7 @@
       const expoCell = row.querySelector('.expo-cell');
       const niveauCell = row.querySelector('.niveau-cell');
       const indiceCell = row.querySelector('.indice-cell');
+      const coordCell = row.querySelector('.coord-cell');
       if (expoCell) {
         expoCell.textContent = `${expo}`;
         const bucket = pertinenceBucketForExpo(expo);
@@ -2788,6 +2797,14 @@
         else if (indice >= 2) indLvl = 2;
         else indLvl = 1;
         indiceCell.style.backgroundColor = levelColor(indLvl);
+      }
+      if (coordCell) {
+        const radius = Math.min(5, Math.max(1, Math.round((expo / 16) * 5)));
+        const angleMap = { partenaire: 0, beneficiaire: 90, interne: 180, autres: 180, prestataire: 270 };
+        const angle = angleMap[entry.categorie] ?? 180;
+        coordCell.textContent = `${radius}, ${angle}°`;
+        entry.rayon = radius;
+        entry.angle = angle;
       }
     }
     // Map exposition values to a bucket 1–4 similar to pertinence
@@ -5059,108 +5076,63 @@
     if (!svg || !tip) return;
     const pointsLayer = svg.querySelector('#radar-points');
     if (pointsLayer) pointsLayer.innerHTML = '';
-
     const center = { x: 480, y: 360 };
     const maxR = 260;
-
-    const zoneAngles = {
-      beneficiaire: { start: 210, end: 330 },
-      partenaire: { start: 330, end: 90 },
-      prestataire: { start: 90, end: 210 }
-    };
-
-    function angleForZone(zone, idx, total) {
-      const span = zoneAngles[zone] || zoneAngles.prestataire;
-      let start = span.start;
-      let end = span.end < start ? span.end + 360 : span.end;
-      const step = (end - start) / (total + 1);
-      return (start + step * (idx + 1)) % 360;
-    }
-
-    function colorForFiabilite(v) {
-      if (v < 4) return levelColor(4);
-      if (v < 5) return levelColor(3);
-      if (v < 7) return levelColor(2);
-      return levelColor(1);
-    }
-
-    function sizeForExposition(v) {
-      if (v < 3) return 5;
-      if (v < 6) return 8;
-      if (v < 9) return 11;
-      return 14;
-    }
-
-    function rForDistance(d) {
-      const v = Math.max(0, Math.min(5, d));
-      return (v / 5) * maxR;
-    }
+    const angleMap = { partenaire: 0, beneficiaire: 90, interne: 180, autres: 180, prestataire: 270 };
 
     function posFromPolar(r, deg) {
       const rad = (deg - 90) * Math.PI / 180;
       return { x: center.x + r * Math.cos(rad), y: center.y + r * Math.sin(rad) };
     }
+    function sizeForDependance(v) {
+      const val = Math.max(1, Math.min(4, v));
+      return 4 + val * 2;
+    }
 
-    const data = ppc.map(item => {
+    const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-dark').trim();
+
+    ppc.forEach(item => {
       const dep = parseInt(item.dependance, 10) || 1;
       const pen = parseInt(item.penetration, 10) || 1;
       const mat = parseInt(item.maturite, 10) || 1;
       const conf = parseInt(item.confiance, 10) || 1;
       const expo = dep * pen;
-      const niveau = mat * conf;
-      const indice = niveau ? expo / niveau : 0;
-      return {
-        label: item.nom || 'PP',
-        zone: item.categorie || 'prestataire',
-        exposition: (expo * 10) / 16,
-        fiabilite: (niveau * 10) / 16,
-        distance: indice
-      };
-    });
+      const radius = Math.min(5, Math.max(1, Math.round((expo / 16) * 5)));
+      const angle = item.angle || angleMap[item.categorie] || 180;
+      const colorLvl = Math.round((mat + conf) / 2);
+      const r = (radius / 5) * maxR;
+      const p = posFromPolar(r, angle);
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute('class', 'radar-point');
 
-    const byZone = data.reduce((acc, d) => {
-      (acc[d.zone] ||= []).push(d);
-      return acc;
-    }, {});
-    const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-dark').trim();
+      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.setAttribute('cx', p.x);
+      c.setAttribute('cy', p.y);
+      c.setAttribute('r', sizeForDependance(dep));
+      c.setAttribute('fill', ssiColor(colorLvl));
+      c.setAttribute('opacity', '0.95');
+      c.setAttribute('stroke', borderColor);
+      c.setAttribute('stroke-opacity', '0.1');
+      c.setAttribute('filter', 'url(#softShadow)');
 
-    Object.entries(byZone).forEach(([zone, items]) => {
-      items.forEach((d, i) => {
-        const a = angleForZone(zone, i, items.length);
-        const r = rForDistance(d.distance);
-        const p = posFromPolar(r, a);
-        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        g.setAttribute('class', 'radar-point');
+      const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      t.setAttribute('x', p.x + 10);
+      t.setAttribute('y', p.y - 8);
+      t.setAttribute('class', 'radar-label radar-small');
+      t.textContent = item.nom || 'PP';
 
-        const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        c.setAttribute('cx', p.x);
-        c.setAttribute('cy', p.y);
-        c.setAttribute('r', sizeForExposition(d.exposition));
-        c.setAttribute('fill', colorForFiabilite(d.fiabilite));
-        c.setAttribute('opacity', '0.95');
-        c.setAttribute('stroke', borderColor);
-        c.setAttribute('stroke-opacity', '0.1');
-        c.setAttribute('filter', 'url(#softShadow)');
+      g.appendChild(c);
+      g.appendChild(t);
+      pointsLayer.appendChild(g);
 
-        const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        t.setAttribute('x', p.x + 10);
-        t.setAttribute('y', p.y - 8);
-        t.setAttribute('class', 'radar-label radar-small');
-        t.textContent = d.label;
-
-        g.appendChild(c);
-        g.appendChild(t);
-        pointsLayer.appendChild(g);
-
-        g.addEventListener('mousemove', (evt) => {
-          const box = svg.getBoundingClientRect();
-          tip.style.left = (evt.clientX - box.left + 12) + 'px';
-          tip.style.top = (evt.clientY - box.top - 12) + 'px';
-          tip.style.opacity = 1;
-          tip.textContent = `${d.label} — zone: ${d.zone} | exposition: ${d.exposition.toFixed(1)} | fiabilite: ${d.fiabilite.toFixed(1)}`;
-        });
-        g.addEventListener('mouseleave', () => { tip.style.opacity = 0; });
+      g.addEventListener('mousemove', (evt) => {
+        const box = svg.getBoundingClientRect();
+        tip.style.left = (evt.clientX - box.left + 12) + 'px';
+        tip.style.top = (evt.clientY - box.top - 12) + 'px';
+        tip.style.opacity = 1;
+        tip.textContent = `${item.nom || 'PP'} — r: ${radius} | angle: ${angle}°`;
       });
+      g.addEventListener('mouseleave', () => { tip.style.opacity = 0; });
     });
   }
 
