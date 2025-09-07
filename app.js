@@ -258,14 +258,6 @@
     const tbody = document.getElementById('missions-body');
     if (!tbody) return;
     tbody.innerHTML = '';
-    // Insert graph row at the top of the table body
-    const graphRow = document.createElement('tr');
-    graphRow.className = 'graph-row';
-    const graphCell = document.createElement('td');
-    graphCell.colSpan = 7;
-    graphCell.innerHTML = '<div id="atelier1-graph" class="graph-wrapper"><svg id="viz" viewBox="0 0 1100 560" preserveAspectRatio="xMidYMid meet"></svg><div class="tip" id="tip"></div></div>';
-    graphRow.appendChild(graphCell);
-    tbody.appendChild(graphRow);
     const analysis = analyses[currentIndex];
     if (!analysis.data) analysis.data = {};
     if (!analysis.data.missions) analysis.data.missions = [];
