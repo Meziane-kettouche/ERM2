@@ -5,6 +5,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EBIOS Risk Manager – Atelier 3</title>
   <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Strategic scenario graph styles */
+    #strategic-graph { --bg:#0f1b2b; --panel:#122036; --ink:#e6eefc; --muted:#2a3a55; --link:#7f8fa6; --source:#7aa2f7; --objective:#00c2a8; --attack:#f9a825; --inter:#5ec7ff; --g1:#21c06e; --g2:#f1d34b; --g3:#ff9f43; --g4:#ff5959; background:var(--bg); color:var(--ink); font:14px/1.4 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+    #strategic-graph .wrap{max-width:1180px;margin:24px auto;padding:0 16px}
+    #strategic-graph h3{font-size:20px;font-weight:700;margin:0 0 12px}
+    #strategic-graph .legend{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 16px}
+    #strategic-graph .legend .item{display:flex;align-items:center;gap:8px;background:var(--panel);padding:6px 10px;border-radius:10px}
+    #strategic-graph .dot{width:12px;height:12px;border-radius:50%}
+    #strategic-graph .card{background:var(--panel);border-radius:14px;padding:12px}
+    #strategic-graph svg{width:100%;height:540px;display:block;background:#0e1a2a;border-radius:10px}
+    #strategic-graph .lane{fill:none;stroke:var(--muted);stroke-dasharray:4 6}
+    #strategic-graph .lbl{fill:#bcd;font-size:12px}
+    #strategic-graph .node{cursor:pointer;transition:transform .12s}
+    #strategic-graph .node:hover{transform:scale(1.03)}
+    #strategic-graph .node rect{rx:10;ry:10;stroke:#0b1220;stroke-width:1.2}
+    #strategic-graph .node text{fill:#081019;font-weight:600}
+    #strategic-graph .node.small text{font-weight:500}
+    #strategic-graph .link{stroke:var(--link);stroke-width:2;fill:none;marker-end:url(#arrow)}
+    #strategic-graph .tooltip{position:fixed;pointer-events:none;background:#0b1727;color:#e8f0ff;border:1px solid #1e2e4d;padding:8px 10px;border-radius:10px;font-size:12px;opacity:0;transform:translate(-50%,-120%);transition:opacity .12s}
+    #strategic-graph .pill{position:absolute;inset:auto auto 18px 18px;background:var(--panel);border-radius:999px;padding:6px 10px;color:#9fb3d1;border:1px solid #1c2c46}
+  </style>
 </head>
 <body>
   <div id="app">
@@ -125,13 +146,56 @@
               <button id="add-ppc-btn" class="add-item-btn">+ Ajouter une partie prenante</button>
             </div>
             <!-- Strategic scenarios sub‑tab -->
-            <div id="atelier3-strategies-tab" class="atelier3-subtab-content">
-              <p>Définissez vos scénarios stratégiques en reliant une source de risque à un objectif visé, en ajoutant des chemins d’attaque, des intermédiaires (parties prenantes) et des évènements redoutés. La gravité correspond au niveau maximal des évènements sélectionnés.</p>
-              <div class="table-container" style="overflow-x:auto; margin-bottom:1rem;">
-                <table id="strategies-table" class="data-table" style="min-width:100%;">
-                  <thead>
-                    <tr>
-                      <th>Source</th>
+              <div id="atelier3-strategies-tab" class="atelier3-subtab-content">
+                <p>Définissez vos scénarios stratégiques en reliant une source de risque à un objectif visé, en ajoutant des chemins d’attaque, des intermédiaires (parties prenantes) et des évènements redoutés. La gravité correspond au niveau maximal des évènements sélectionnés.</p>
+                <div id="strategic-graph">
+                  <div class="wrap">
+                    <h3>EBIOS RM – Source → Objectif → Chemin d'attaque → Intermédiaire → Évènement redouté</h3>
+                    <div class="legend">
+                      <div class="item"><span class="dot" style="background:var(--source)"></span><span>Source</span></div>
+                      <div class="item"><span class="dot" style="background:var(--objective)"></span><span>Objectif</span></div>
+                      <div class="item"><span class="dot" style="background:var(--attack)"></span><span>Chemin d'attaque</span></div>
+                      <div class="item"><span class="dot" style="background:var(--inter)"></span><span>Intermédiaire</span></div>
+                      <div class="item"><span class="dot" style="background:var(--g1)"></span><span>Event G1</span></div>
+                      <div class="item"><span class="dot" style="background:var(--g2)"></span><span>Event G2</span></div>
+                      <div class="item"><span class="dot" style="background:var(--g3)"></span><span>Event G3</span></div>
+                      <div class="item"><span class="dot" style="background:var(--g4)"></span><span>Event G4</span></div>
+                    </div>
+                    <div class="card">
+                      <svg id="strategic-canvas" viewBox="0 0 1180 540" aria-label="Scenario EBIOS">
+                        <defs>
+                          <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                            <path d="M0,0 L10,5 L0,10 z" fill="var(--link)"></path>
+                          </marker>
+                        </defs>
+
+                        <g id="lanes">
+                          <line class="lane" x1="110"  y1="40" x2="110"  y2="500"></line>
+                          <line class="lane" x1="320"  y1="40" x2="320"  y2="500"></line>
+                          <line class="lane" x1="540"  y1="40" x2="540"  y2="500"></line>
+                          <line class="lane" x1="760"  y1="40" x2="760"  y2="500"></line>
+                          <line class="lane" x1="1000" y1="40" x2="1000" y2="500"></line>
+                          <text class="lbl" x="80"   y="28">Source</text>
+                          <text class="lbl" x="285"  y="28">Objectif</text>
+                          <text class="lbl" x="485"  y="28">Chemin d'attaque</text>
+                          <text class="lbl" x="720"  y="28">Intermédiaire</text>
+                          <text class="lbl" x="950"  y="28">Évènement (fond = gravité)</text>
+                        </g>
+
+                        <g id="strategic-links"></g>
+                        <g id="strategic-nodes"></g>
+                      </svg>
+
+                      <div class="pill">Schéma: S → O → CA → I → ER (couleur ER = gravité G1..G4)</div>
+                      <div class="tooltip" id="strategic-tip"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="table-container" style="overflow-x:auto; margin-bottom:1rem;">
+                  <table id="strategies-table" class="data-table" style="min-width:100%;">
+                    <thead>
+                      <tr>
+                        <th>Source</th>
                       <th>Objectif</th>
                       <th>Chemins d’attaque</th>
                       <th>Intermédiaires</th>
@@ -151,5 +215,115 @@
     </main>
   </div>
   <script src="app.js"></script>
+  <script>
+    // Strategic scenario graph rendering
+    (function(){
+      const data = {
+        nodes: [
+          { id:"S1", type:"source",   label:"Cybercriminel (groupe A)", details:"Motivation 4, Ressources 3" },
+          { id:"S2", type:"source",   label:"Employe mecontent",        details:"Motivation 3, Ressources 2" },
+          { id:"O1", type:"objective",label:"Vol d'identifiants",       details:"Ciblage comptes admin" },
+          { id:"O2", type:"objective",label:"Interruption de service",  details:"Impact disponibilite" },
+          { id:"C1", type:"attack",   label:"Hameconnage dirige",       details:"Spear-phishing cible" },
+          { id:"C2", type:"attack",   label:"Exploitation vuln web",    details:"Injection + RCE" },
+          { id:"I1", type:"inter",    label:"Prestataire infogerance",  details:"Acces VPN partenaire" },
+          { id:"I2", type:"inter",    label:"Application publique",     details:"Front web externe" },
+          { id:"E1", type:"event",    label:"Fuite de donnees RH",      details:"RGPD, image, amendes", severity:4 },
+          { id:"E2", type:"event",    label:"Indisponibilite 48h",      details:"Rupture service",       severity:3 }
+        ],
+        links: [
+          { from:"S1", to:"O1" },
+          { from:"O1", to:"C1" },
+          { from:"C1", to:"I1" },
+          { from:"I1", to:"E1" },
+
+          { from:"S2", to:"O2" },
+          { from:"O2", to:"C2" },
+          { from:"C2", to:"I2" },
+          { from:"I2", to:"E2" },
+
+          { from:"O1", to:"C2" },
+          { from:"C2", to:"I2" },
+          { from:"I2", to:"E1" }
+        ]
+      };
+
+      const laneX = { source:110, objective:320, attack:540, inter:760, event:1000 };
+      const colorByType = {
+        source:"var(--source)",
+        objective:"var(--objective)",
+        attack:"var(--attack)",
+        inter:"var(--inter)"
+      };
+      const sevColor = { 1:"var(--g1)", 2:"var(--g2)", 3:"var(--g3)", 4:"var(--g4)" };
+
+      const byType = {};
+      data.nodes.forEach(n => (byType[n.type] ||= []).push(n));
+
+      const laneTop = 70, laneBottom = 500, gapY = 70;
+      Object.keys(byType).forEach(t => {
+        byType[t].forEach((n,i) => {
+          n.x = laneX[t];
+          n.y = Math.min(laneTop + i*gapY, laneBottom);
+        });
+      });
+
+      const svg = document.getElementById("strategic-canvas");
+      const gNodes = document.getElementById("strategic-nodes");
+      const gLinks = document.getElementById("strategic-links");
+      const tip = document.getElementById("strategic-tip");
+
+      function makeNode(n){
+        const g = document.createElementNS("http://www.w3.org/2000/svg","g");
+        g.classList.add("node");
+        if(n.type==="attack" || n.type==="inter") g.classList.add("small");
+        g.setAttribute("transform",`translate(${n.x-95},${n.y-22})`);
+
+        const rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
+        rect.setAttribute("width",190);
+        rect.setAttribute("height",44);
+
+        const fill = (n.type==="event")
+          ? (sevColor[n.severity] || "var(--g2)")
+          : (colorByType[n.type] || "var(--panel)");
+        rect.setAttribute("fill", fill);
+        g.appendChild(rect);
+
+        const txt = document.createElementNS("http://www.w3.org/2000/svg","text");
+        txt.setAttribute("x",12); txt.setAttribute("y",26);
+        txt.textContent = (n.type==="event" && n.severity)
+          ? `${n.label} [G${n.severity}]` : n.label;
+        g.appendChild(txt);
+
+        g.addEventListener("mousemove", (e) => {
+          if(!n.details) return;
+          tip.style.left = e.clientX + "px";
+          tip.style.top = e.clientY + "px";
+          const extra = (n.type==="event" && n.severity) ? ` | Gravité: ${n.severity}` : "";
+          tip.textContent = n.details + extra;
+          tip.style.opacity = 1;
+        });
+        g.addEventListener("mouseleave", () => tip.style.opacity = 0);
+
+        gNodes.appendChild(g);
+      }
+
+      function linkPath(a,b){
+        const bend = Math.max(20, Math.min(140, Math.abs(b.x - a.x)/2.5));
+        const p = document.createElementNS("http://www.w3.org/2000/svg","path");
+        p.setAttribute("class","link");
+        const d = `M ${a.x+95} ${a.y} C ${a.x+95+bend} ${a.y}, ${b.x-95-bend} ${b.y}, ${b.x-95} ${b.y}`;
+        p.setAttribute("d", d);
+        gLinks.appendChild(p);
+      }
+
+      data.nodes.forEach(makeNode);
+      data.links.forEach(l => {
+        const a = data.nodes.find(n => n.id === l.from);
+        const b = data.nodes.find(n => n.id === l.to);
+        if(a && b) linkPath(a,b);
+      });
+    })();
+  </script>
 </body>
 </html>
