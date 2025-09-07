@@ -132,16 +132,6 @@
     renderPlanActions();
     renderRisquesChart();
 
-    // Ensure Atelier 3 grid layout matches the active sub‑tab
-    const grid3 = document.querySelector('#atelier3 .atelier-grid');
-    if (grid3) {
-      const activeSub = document.querySelector('#atelier3-subtabs .atelier3-subtab-btn.active');
-      if (activeSub && activeSub.getAttribute('data-subtab') === 'carto') {
-        grid3.classList.add('carto-active');
-      } else {
-        grid3.classList.remove('carto-active');
-      }
-    }
   }
 
   // ----- Rendering helper for generic items
@@ -5447,21 +5437,14 @@
             graphEl.style.display = '';
             gapChartEl.style.display = 'none';
             // remove full-width layout when leaving gap analysis
-            const grid = document.querySelector('#atelier1 .atelier-grid');
-            if (grid) grid.classList.remove('gap-active');
           } else if (target === 'gap') {
             graphEl.style.display = 'none';
             gapChartEl.style.display = '';
             // Draw the GAP chart when switching to this tab
             updateGapChart();
-            // make the grid full width for gap analysis
-            const grid = document.querySelector('#atelier1 .atelier-grid');
-            if (grid) grid.classList.add('gap-active');
           } else if (target === 'vuln') {
             graphEl.style.display = 'none';
             gapChartEl.style.display = 'none';
-            const grid = document.querySelector('#atelier1 .atelier-grid');
-            if (grid) grid.classList.remove('gap-active');
             renderSupportsQualifTable();
           }
         }
@@ -5480,19 +5463,6 @@
         });
         // Update chart when switching
         updateAtelier3Chart();
-
-        // When switching between cartography and strategies, toggle a class
-        // on the Atelier 3 grid to collapse the layout to a single column
-        // for the cartography view.  This ensures the chart appears below
-        // the table rather than beside it.
-        const grid3 = document.querySelector('#atelier3 .atelier-grid');
-        if (grid3) {
-          if (target === 'carto') {
-            grid3.classList.add('carto-active');
-          } else {
-            grid3.classList.remove('carto-active');
-          }
-        }
       });
     });
   }
