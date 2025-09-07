@@ -642,6 +642,8 @@ input[type="text"]:focus, input[type="number"]:focus, textarea:focus {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  /* Allow the column to shrink when tables overflow so charts keep their width */
+  min-width: 0;
 }
 
 /* Chart container styling */
@@ -650,6 +652,8 @@ input[type="text"]:focus, input[type="number"]:focus, textarea:focus {
   border-radius: var(--border-radius);
   padding: 1rem;
   overflow-x: auto;
+  /* Keep charts readable by preventing excessive shrinkage */
+  min-width: 350px;
 }
 
 /* Supports list inside missions */
