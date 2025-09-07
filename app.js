@@ -258,6 +258,14 @@
     const tbody = document.getElementById('missions-body');
     if (!tbody) return;
     tbody.innerHTML = '';
+    // Insert graph row at the top of the table body
+    const graphRow = document.createElement('tr');
+    graphRow.className = 'graph-row';
+    const graphCell = document.createElement('td');
+    graphCell.colSpan = 7;
+    graphCell.innerHTML = '<div id="atelier1-graph" class="graph-wrapper"><svg id="viz" viewBox="0 0 1100 560" preserveAspectRatio="xMidYMid meet"></svg><div class="tip" id="tip"></div></div>';
+    graphRow.appendChild(graphCell);
+    tbody.appendChild(graphRow);
     const analysis = analyses[currentIndex];
     if (!analysis.data) analysis.data = {};
     if (!analysis.data.missions) analysis.data.missions = [];
@@ -561,6 +569,7 @@
     // After rendering rows, set up resizable columns on the missions table
     addMissionTableResizers();
     renderSupportsQualifTable();
+    updateAtelier1Graph();
   }
 
   // Add resizer handles to the header of the missions table.  Users
@@ -1853,161 +1862,13 @@
     container.appendChild(legend);
   }
 
-  // ----- Atelier 1: Graph generation.  A custom SVG graph replaces
-  // the previous ECharts-based implementation, so no chart instance
-  // is required here.
-  let atelier1Chart = null; // unused placeholder, preserved for backward compatibility
+  // ----- Atelier 1: Graph replaced by standalone script
+  let atelier1Chart = null; // placeholder for backward compatibility
   function updateAtelier1Graph() {
-    // Custom SVG-based network rendering without external libraries
-    const container = document.getElementById('atelier1-graph');
-    if (!container) return;
-    const analysis = analyses[currentIndex];
-    if (!analysis || !analysis.data) return;
-    const missions = analysis.data.missions || [];
-    const events = analysis.data.events || [];
-    // Determine maximum impact per mission
-    const impactByMission = new Map();
-    events.forEach(ev => {
-      const mid = ev.missionId;
-      const imp = parseInt(ev.impact, 10) || 0;
-      if (!impactByMission.has(mid) || imp > impactByMission.get(mid)) {
-        impactByMission.set(mid, imp);
-      }
-    });
-    // Compute support statistics: degree and maximum impact across linked missions
-    const supportStats = new Map(); // name -> { degree, maxImpact }
-    missions.forEach(m => {
-      const mImp = impactByMission.get(m.id) || 0;
-      (m.supports || []).forEach(s => {
-        const name = (s.name || '').trim();
-        if (!name) return;
-        if (!supportStats.has(name)) supportStats.set(name, { degree: 0, maxImpact: 0 });
-        const stat = supportStats.get(name);
-        stat.degree += 1;
-        if (mImp > stat.maxImpact) stat.maxImpact = mImp;
-        supportStats.set(name, stat);
-      });
-    });
-    // Build mission nodes array
-    const missionNodes = [];
-    missions.forEach(m => {
-      const imp = impactByMission.get(m.id) || 0;
-      missionNodes.push({ id: m.id, name: m.denom || 'Valeur', desc: m.description || '', impact: imp });
-    });
-    // Build support nodes array
-    const supportNodes = [];
-    supportStats.forEach((stat, name) => {
-      supportNodes.push({ id: name, name: name, degree: stat.degree, maxImpact: stat.maxImpact });
-    });
-    // Clear previous content
-    container.innerHTML = '';
-    // Determine container dimensions
-    const width = container.clientWidth || container.offsetWidth || 600;
-    const height = container.clientHeight || container.offsetHeight || 600;
-    // Create SVG
-    const svgNS = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(svgNS, 'svg');
-    svg.setAttribute('width', width);
-    svg.setAttribute('height', height);
-    svg.style.display = 'block';
-    // Helper functions
-    function impactColor(lvl) {
-      return {1: '#2a9d8f', 2: '#e9c46a', 3: '#f4a261', 4: '#e63946'}[lvl] || '#3c85cc';
+    // Rendering is handled in atelier1_graph.js
+    if (typeof renderAtelier1StaticGraph === 'function') {
+      renderAtelier1StaticGraph();
     }
-    function triangleSize(lvl) {
-      return {1: 10, 2: 14, 3: 18, 4: 22}[lvl] || 10;
-    }
-    function circleRadius(deg) {
-      return Math.min(32, 10 + deg * 6);
-    }
-    // Compute positions: missions on left, supports on right
-    const mCount = missionNodes.length;
-    const sCount = supportNodes.length;
-    const mSpacing = mCount > 0 ? height / (mCount + 1) : 0;
-    const sSpacing = sCount > 0 ? height / (sCount + 1) : 0;
-    const mX = Math.max(80, width * 0.2);
-    const sX = Math.min(width - 80, width * 0.8);
-    const missionPos = new Map();
-    missionNodes.forEach((node, idx) => {
-      const y = (idx + 1) * mSpacing;
-      missionPos.set(node.id, { x: mX, y, node });
-    });
-    const supportPos = new Map();
-    supportNodes.forEach((node, idx) => {
-      const y = (idx + 1) * sSpacing;
-      supportPos.set(node.id, { x: sX, y, node });
-    });
-    // Draw lines for each link
-    missions.forEach(m => {
-      (m.supports || []).forEach(s => {
-        const name = (s.name || '').trim();
-        if (!name) return;
-        const mP = missionPos.get(m.id);
-        const sP = supportPos.get(name);
-        if (!mP || !sP) return;
-        const line = document.createElementNS(svgNS, 'line');
-        line.setAttribute('x1', mP.x + triangleSize(mP.node.impact));
-        line.setAttribute('y1', mP.y);
-        line.setAttribute('x2', sP.x - circleRadius(sP.node.degree));
-        line.setAttribute('y2', sP.y);
-        line.setAttribute('stroke', '#888');
-        line.setAttribute('stroke-width', '1');
-        svg.appendChild(line);
-      });
-    });
-    // Draw mission nodes
-    missionPos.forEach(({ x, y, node }) => {
-      const size = triangleSize(node.impact);
-      const color = impactColor(node.impact);
-      const points = [
-        `${x - size},${y - size}`,
-        `${x - size},${y + size}`,
-        `${x},${y}`
-      ].join(' ');
-      const poly = document.createElementNS(svgNS, 'polygon');
-      poly.setAttribute('points', points);
-      poly.setAttribute('fill', color);
-      // Tooltip
-      const title = document.createElementNS(svgNS, 'title');
-      title.textContent = `${node.name}\nImpact: ${node.impact || '0'}${node.desc ? '\n' + node.desc : ''}`;
-      poly.appendChild(title);
-      svg.appendChild(poly);
-      // Label left of triangle
-      const text = document.createElementNS(svgNS, 'text');
-      text.setAttribute('x', x - size - 4);
-      text.setAttribute('y', y);
-      text.setAttribute('text-anchor', 'end');
-      text.setAttribute('alignment-baseline', 'middle');
-      text.setAttribute('fill', 'var(--text-primary)');
-      text.setAttribute('font-size', '10');
-      text.textContent = node.name;
-      svg.appendChild(text);
-    });
-    // Draw support nodes
-    supportPos.forEach(({ x, y, node }) => {
-      const r = circleRadius(node.degree);
-      const color = impactColor(node.maxImpact);
-      const circle = document.createElementNS(svgNS, 'circle');
-      circle.setAttribute('cx', x);
-      circle.setAttribute('cy', y);
-      circle.setAttribute('r', r);
-      circle.setAttribute('fill', color || '#9aa0a6');
-      const title = document.createElementNS(svgNS, 'title');
-      title.textContent = `${node.name}\nLiens: ${node.degree}\nMax impact supporté: ${node.maxImpact || '0'}`;
-      circle.appendChild(title);
-      svg.appendChild(circle);
-      // Label right of circle
-      const text = document.createElementNS(svgNS, 'text');
-      text.setAttribute('x', x + r + 4);
-      text.setAttribute('y', y);
-      text.setAttribute('text-anchor', 'start');
-      text.setAttribute('alignment-baseline', 'middle');
-      text.setAttribute('fill', 'var(--text-primary)');
-      text.setAttribute('font-size', '10');
-      text.textContent = node.name;
-      svg.appendChild(text);
-    });
-    container.appendChild(svg);
   }
 
   // ----- Atelier 1: Missions
