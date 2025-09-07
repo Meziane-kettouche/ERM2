@@ -1309,17 +1309,6 @@
     return Array.from(map.values());
   }
 
-  // Setup individual column toggle icons for the kill chain columns
-  function setupColumnToggles() {
-    const table = document.getElementById('ops-table');
-    if (!table) return;
-    table.querySelectorAll('.col-toggle').forEach(icon => {
-      const col = icon.getAttribute('data-col');
-      icon.addEventListener('click', () => {
-        table.classList.toggle('hide-' + col);
-      });
-    });
-  }
 
   /*
    * ----- Import modal setup -----
@@ -1423,18 +1412,25 @@
         items.push({ id, label, desc: desc || '', extra: '' });
       });
     } else if (type === 'risques') {
-      // gather risks from risk list, falling back on indice or id if needed
+      // Gather risks from the global list and from operational scenarios
       const riskMap = new Map();
       (analysis.data.risques || []).forEach(riskObj => {
         const label = riskObj.libelle || riskObj.titre || riskObj.indice || riskObj.id || '';
         if (!label) return;
         const id = riskObj.id || label;
-        if (!riskMap.has(id)) {
-          const desc = riskObj.description || '';
-          riskMap.set(id, { id, label, desc });
-        }
+        const desc = riskObj.description || '';
+        riskMap.set(id, { id, label, desc });
       });
-      riskMap.forEach((obj) => {
+      (analysis.data.so || []).forEach(so => {
+        (so.risks || []).forEach(rk => {
+          const label = rk.name || rk.id;
+          if (!label) return;
+          const id = rk.id || rk.name;
+          const desc = rk.description || '';
+          if (!riskMap.has(id)) riskMap.set(id, { id, label, desc });
+        });
+      });
+      riskMap.forEach(obj => {
         items.push({ id: obj.id, label: obj.label, desc: obj.desc || '', extra: '' });
       });
     }
@@ -1561,6 +1557,17 @@
         current.vraisemblance = Math.max(current.vraisemblance, parseInt(riskObj.vraisemblance, 10) || 1);
         current.gravite = Math.max(current.gravite, parseInt(riskObj.gravite, 10) || 1);
         riskMap.set(id, current);
+      });
+      (analysis.data.so || []).forEach(so => {
+        (so.risks || []).forEach(rk => {
+          const label = rk.name || rk.id;
+          if (!label) return;
+          const id = rk.id || rk.name;
+          const current = riskMap.get(id) || { id, name: label, vraisemblance: parseInt(rk.vraisemblance, 10) || 1, gravite: parseInt(rk.gravite, 10) || 1 };
+          current.vraisemblance = Math.max(current.vraisemblance, parseInt(rk.vraisemblance, 10) || 1);
+          current.gravite = Math.max(current.gravite, parseInt(rk.gravite, 10) || 1);
+          riskMap.set(id, current);
+        });
       });
       importSelections.forEach(id => {
         const risk = riskMap.get(id);
@@ -3210,10 +3217,6 @@
         if (!item.id) item.id = uid();
         if (!item.eventId) item.eventId = '';
         if (!item.path) item.path = '';
-        if (!Array.isArray(item.connaitre)) item.connaitre = [];
-        if (!Array.isArray(item.rester)) item.rester = [];
-        if (!Array.isArray(item.trouver)) item.trouver = [];
-        if (!Array.isArray(item.exploiter)) item.exploiter = [];
         if (!Array.isArray(item.risks)) item.risks = [];
         const tr = document.createElement('tr');
         // Event select
@@ -3332,52 +3335,6 @@
         td.appendChild(riskCell);
         tr.appendChild(td);
 
-        // Helper to render kill chain stage cell
-        function renderStageCell(stageKey) {
-          const cell = document.createElement('td');
-          const wrapper = document.createElement('div');
-          wrapper.className = 'assoc-cell';
-          // remove existing
-          (item[stageKey] || []).forEach((step, sIdx) => {
-            const tag = document.createElement('span');
-            tag.className = 'assoc-item';
-            tag.textContent = step;
-            const rmBtn = document.createElement('button');
-            rmBtn.className = 'remove-assoc';
-            rmBtn.textContent = '×';
-            rmBtn.title = 'Retirer cette étape';
-            rmBtn.addEventListener('click', () => {
-              if (!confirm('Retirer cette étape ?')) return;
-              item[stageKey].splice(sIdx, 1);
-              saveAnalyses();
-              renderSO();
-            });
-            tag.appendChild(rmBtn);
-            wrapper.appendChild(tag);
-          });
-          const addBtn = document.createElement('button');
-          addBtn.className = 'add-assoc-btn';
-          addBtn.textContent = '+ Ajouter';
-          addBtn.addEventListener('click', () => {
-            const val = prompt('Décrire une étape pour « ' + stageKey + ' » :');
-            if (val) {
-              item[stageKey].push(val);
-              saveAnalyses();
-              renderSO();
-            }
-          });
-          wrapper.appendChild(addBtn);
-          cell.appendChild(wrapper);
-          return cell;
-        }
-        // Connaître
-        tr.appendChild(renderStageCell('connaitre'));
-        // Rester
-        tr.appendChild(renderStageCell('rester'));
-        // Trouver
-        tr.appendChild(renderStageCell('trouver'));
-        // Exploiter
-        tr.appendChild(renderStageCell('exploiter'));
         // Actions: delete
         td = document.createElement('td');
         const delBtn = document.createElement('button');
@@ -3405,10 +3362,6 @@
             id: uid(),
             eventId: '',
             path: '',
-            connaitre: [],
-            rester: [],
-            trouver: [],
-            exploiter: [],
             risks: []
           });
           saveAnalyses();
@@ -4169,6 +4122,17 @@
       cur.gravite = Math.max(cur.gravite, parseInt(riskObj.gravite, 10) || 1);
       riskMap.set(id, cur);
     });
+    (analysis.data.so || []).forEach(so => {
+      (so.risks || []).forEach(rk => {
+        const label = rk.name || rk.id;
+        if (!label) return;
+        const id = rk.id || rk.name;
+        const cur = riskMap.get(id) || { id, name: label, vraisemblance: parseInt(rk.vraisemblance, 10) || 1, gravite: parseInt(rk.gravite, 10) || 1 };
+        cur.vraisemblance = Math.max(cur.vraisemblance, parseInt(rk.vraisemblance, 10) || 1);
+        cur.gravite = Math.max(cur.gravite, parseInt(rk.gravite, 10) || 1);
+        riskMap.set(id, cur);
+      });
+    });
     const initData = [];
     const residData = [];
     const arrowData = [];
@@ -4256,7 +4220,7 @@
     const analysis = analyses[currentIndex];
     if (!analysis || !analysis.data) return;
     if (!Array.isArray(analysis.data.actionsRisques)) analysis.data.actionsRisques = [];
-    // Gather risks from operational scenarios (atelier 4) for reference
+    // Gather risks from analysis list and operational scenarios for reference
     const riskMap = new Map();
     (analysis.data.risques || []).forEach(riskObj => {
       const label = riskObj.libelle || riskObj.titre || riskObj.indice || riskObj.id || '';
@@ -4266,6 +4230,17 @@
       cur.vraisemblance = Math.max(cur.vraisemblance, parseInt(riskObj.vraisemblance, 10) || 1);
       cur.gravite = Math.max(cur.gravite, parseInt(riskObj.gravite, 10) || 1);
       riskMap.set(id, cur);
+    });
+    (analysis.data.so || []).forEach(so => {
+      (so.risks || []).forEach(rk => {
+        const label = rk.name || rk.id;
+        if (!label) return;
+        const id = rk.id || rk.name;
+        const cur = riskMap.get(id) || { id, name: label, vraisemblance: parseInt(rk.vraisemblance, 10) || 1, gravite: parseInt(rk.gravite, 10) || 1 };
+        cur.vraisemblance = Math.max(cur.vraisemblance, parseInt(rk.vraisemblance, 10) || 1);
+        cur.gravite = Math.max(cur.gravite, parseInt(rk.gravite, 10) || 1);
+        riskMap.set(id, cur);
+      });
     });
     analysis.data.actionsRisques.forEach(row => {
       if (!row.riskId && row.riskName) {
@@ -5631,8 +5606,7 @@
     setupNavigation();
     setupSidebarToggle();
     setupAddButtons();
-    setupColumnToggles();
-      setupActionImport();
+    setupActionImport();
     // Ensure the current analysis ID is saved even if the user reloads or
     // closes the page without navigating through the provided links.
     window.addEventListener('beforeunload', persistCurrentAnalysisId);
