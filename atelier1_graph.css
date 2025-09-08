@@ -63,15 +63,17 @@
 
 .graph-legend {
   display:flex;
-  gap:1rem;
-  justify-content:center;
-  margin-top:6px;
-  font-size:12px;
+  align-items:center;
+  gap:0.75rem;
+  width:max-content;
+  margin:6px auto 0;
+  font-size:14px;
 }
 
 .graph-legend span {
   display:flex;
   align-items:center;
   gap:4px;
+  white-space:nowrap;
 }
 

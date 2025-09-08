@@ -1,32 +1,13 @@
-function renderAtelier1StaticGraph() {
+// Render the Atelier 1 graph from provided nodes and links.  The previous
+// implementation only displayed a static example which did not reflect the
+// data entered in the table.  This function is now data‑driven so it can be
+// called with the current missions/supports/events extracted from the
+// application state.
+function renderAtelier1Graph(nodes = [], links = []) {
   const svg = document.getElementById('viz');
   const tip = document.getElementById('tip');
   if (!svg || !tip) return;
   svg.innerHTML = '';
-
-  const nodes = [
-    {id:'V1', type:'valeur', label:'Gestion RH'},
-    {id:'V2', type:'valeur', label:'Facturation'},
-    {id:'V3', type:'valeur', label:'Suivi Clients'},
-    {id:'S1', type:'support', label:'Base RH'},
-    {id:'S2', type:'support', label:'Serveur Finance'},
-    {id:'S3', type:'support', label:'CRM'},
-    {id:'E1', type:'event', label:'Fuite données', severity:4},
-    {id:'E2', type:'event', label:'Indispo appli', severity:3},
-    {id:'E3', type:'event', label:'Fraude paiement', severity:2},
-    {id:'E4', type:'event', label:'Erreur saisie', severity:1}
-  ];
-  const links = [
-    {id:'L1', source:'V1', target:'S1', weight:2},
-    {id:'L2', source:'V2', target:'S2', weight:3},
-    {id:'L3', source:'V3', target:'S3', weight:2},
-    {id:'L4', source:'S1', target:'E1', weight:1},
-    {id:'L5', source:'S1', target:'E2', weight:1},
-    {id:'L6', source:'S2', target:'E2', weight:2},
-    {id:'L7', source:'S2', target:'E3', weight:1},
-    {id:'L8', source:'S3', target:'E4', weight:1},
-    {id:'L9', source:'S3', target:'E1', weight:1}
-  ];
 
   const sevColor = s => ({1:'#22c55e',2:'#eab308',3:'#f97316',4:'#ef4444'}[s] || '#6ea8fe');
   const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
