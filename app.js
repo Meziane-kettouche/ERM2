@@ -1854,12 +1854,55 @@
     container.appendChild(legend);
   }
 
-  // ----- Atelier 1: Graph replaced by standalone script
+  // ----- Atelier 1: Graph -----
+  // Build nodes and links from missions/supports/events and forward them to
+  // the rendering helper defined in atelier1_graph.js.
   let atelier1Chart = null; // placeholder for backward compatibility
   function updateAtelier1Graph() {
-    // Rendering is handled in atelier1_graph.js
-    if (typeof renderAtelier1StaticGraph === 'function') {
-      renderAtelier1StaticGraph();
+    const analysis = analyses[currentIndex];
+    if (!analysis || !analysis.data) {
+      if (typeof renderAtelier1Graph === 'function') renderAtelier1Graph([], []);
+      return;
+    }
+
+    const nodes = [];
+    const links = [];
+    const supportMap = new Map();
+    const eventMap = new Map();
+
+    (analysis.data.missions || []).forEach(mission => {
+      if (!mission.id) mission.id = uid();
+      nodes.push({ id: mission.id, type: 'valeur', label: mission.denom || 'Valeur' });
+
+      (mission.supports || []).forEach(support => {
+        if (!support.id) support.id = uid();
+        if (!supportMap.has(support.id)) {
+          supportMap.set(support.id, true);
+          nodes.push({ id: support.id, type: 'support', label: support.name || 'Support' });
+        }
+        links.push({ id: `${mission.id}-${support.id}`, source: mission.id, target: support.id, weight: 1 });
+      });
+
+      const events = (analysis.data.events || []).filter(ev => ev.missionId === mission.id);
+      events.forEach(ev => {
+        if (!ev.id) ev.id = uid();
+        if (!eventMap.has(ev.id)) {
+          eventMap.set(ev.id, true);
+          nodes.push({
+            id: ev.id,
+            type: 'event',
+            label: ev.evenement || 'Évènement',
+            severity: parseInt(ev.impact, 10) || 0
+          });
+        }
+        (mission.supports || []).forEach(support => {
+          links.push({ id: `${support.id}-${ev.id}`, source: support.id, target: ev.id, weight: 1 });
+        });
+      });
+    });
+
+    if (typeof renderAtelier1Graph === 'function') {
+      renderAtelier1Graph(nodes, links);
     }
   }
 
