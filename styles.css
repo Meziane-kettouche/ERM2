@@ -1292,3 +1292,11 @@ svg {
   white-space: nowrap;
   border: 0;
 }
+
+#copyright {
+  position: fixed;
+  bottom: 0.5rem;
+  right: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
