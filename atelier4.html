@@ -64,11 +64,11 @@
     </main>
   </div>
   <script src="app.js"></script>
-  <!-- Modal for selecting risks from the MITRE CSV -->
+  <!-- Modal for selecting risks from the MITRE CSV or adding them manually -->
   <div id="risk-modal" class="modal" style="display:none">
     <div class="modal-content">
-      <h3>Ajouter un risque (MITRE)</h3>
-      <input id="risk-search" type="text" placeholder="Rechercher..." style="width:100%; margin-bottom:0.5rem;" />
+      <h3>Ajouter un risque</h3>
+      <input id="risk-search" type="text" placeholder="Rechercher dans la base MITRE..." style="width:100%; margin-bottom:0.5rem;" />
       <div class="risk-table-container">
         <table id="risk-table" class="risk-table">
           <colgroup>
@@ -83,6 +83,12 @@
         </table>
       </div>
       <div id="risk-selected" class="risk-selected"></div>
+      <!-- Manual risk entry -->
+      <div style="margin-top:0.6rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+        <input id="manual-risk-id" type="text" placeholder="ID" style="flex:0 0 6rem;" />
+        <input id="manual-risk-name" type="text" placeholder="Nom du risque" style="flex:1;" />
+        <button id="manual-risk-add" class="add-item-btn">Ajouter</button>
+      </div>
       <div style="margin-top:0.6rem; display:flex; gap:0.5rem;">
         <button id="risk-select-apply" class="add-item-btn">Ajouter la sélection</button>
         <button id="risk-close-btn" class="header-btn" style="flex:1;">Fermer</button>

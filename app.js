@@ -1632,7 +1632,7 @@
     });
   }
 
-  // Open the risk modal and display MITRE techniques from the CSV
+  // Open the risk modal and display MITRE techniques from the CSV or allow manual entry
   function openRiskModal(targetItem) {
     riskModalTarget = targetItem;
     const modal = document.getElementById('risk-modal');
@@ -1642,6 +1642,9 @@
     const selectedDiv = document.getElementById('risk-selected');
     const closeBtn = document.getElementById('risk-close-btn');
     const applyBtn = document.getElementById('risk-select-apply');
+    const manualIdInput = document.getElementById('manual-risk-id');
+    const manualNameInput = document.getElementById('manual-risk-name');
+    const manualAddBtn = document.getElementById('manual-risk-add');
     let selectedIds = new Set();
 
     function renderTable(filter) {
@@ -1685,6 +1688,9 @@
       renderTable(e.target.value);
     };
 
+    if (manualIdInput) manualIdInput.value = '';
+    if (manualNameInput) manualNameInput.value = '';
+
     closeBtn.onclick = () => {
       closeRiskModal();
     };
@@ -1702,6 +1708,21 @@
         saveAnalyses();
         renderSO();
         closeRiskModal();
+      };
+    }
+
+    if (manualAddBtn) {
+      manualAddBtn.onclick = () => {
+        if (!riskModalTarget) return;
+        const id = manualIdInput ? manualIdInput.value.trim() : '';
+        const name = manualNameInput ? manualNameInput.value.trim() : '';
+        if (!name) return;
+        const label = id ? id + ' ' + name : name;
+        riskModalTarget.risks.push({ name: label, vraisemblance: 1, gravite: 1 });
+        saveAnalyses();
+        renderSO();
+        if (manualIdInput) manualIdInput.value = '';
+        if (manualNameInput) manualNameInput.value = '';
       };
     }
 
