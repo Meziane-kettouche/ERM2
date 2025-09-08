@@ -1727,6 +1727,9 @@
           mitreLibrary = parsed;
           localStorage.setItem('ebiosMitreLibrary', JSON.stringify(mitreLibrary));
         }
+      }).catch(err => {
+        console.warn('Failed to load MITRE CSV', err);
+        alert('Impossible de charger le fichier MITRE. Utilisez un serveur local ou ajoutez un risque manuel.');
       }).finally(() => {
         callback();
       });
@@ -3262,12 +3265,25 @@
         });
         const addRiskBtn = document.createElement('button');
         addRiskBtn.className = 'add-assoc-btn';
-        addRiskBtn.textContent = '+ Ajouter';
+        addRiskBtn.textContent = '+ Ajouter (MITRE)';
         addRiskBtn.addEventListener('click', () => {
           // Open the MITRE/OWASP risk selection modal for this scenario
           openRiskModal(item);
         });
         riskCell.appendChild(addRiskBtn);
+        // Manual risk addition
+        const addManualBtn = document.createElement('button');
+        addManualBtn.className = 'add-assoc-btn';
+        addManualBtn.textContent = '+ Ajouter manuel';
+        addManualBtn.addEventListener('click', () => {
+          const name = prompt('Nom du risque ?');
+          if (name && name.trim()) {
+            item.risks.push({ name: name.trim(), vraisemblance: 1, gravite: 1 });
+            saveAnalyses();
+            renderSO();
+          }
+        });
+        riskCell.appendChild(addManualBtn);
         td.appendChild(riskCell);
         tr.appendChild(td);
 
