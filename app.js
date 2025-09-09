@@ -5592,6 +5592,69 @@
     });
   }
 
+  async function exportPdfReport() {
+    if (currentIndex < 0) return;
+    const analysis = analyses[currentIndex];
+    const reportWindow = window.open('', '_blank');
+    if (!reportWindow) return;
+
+    reportWindow.document.write('<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Rapport EBIOS RM</title><link rel="stylesheet" href="styles.css"><style>section{page-break-after:always;margin-bottom:2rem;}h1{text-align:center;margin-top:0;}body{padding:20px;}</style></head><body></body></html>');
+    reportWindow.document.close();
+
+    const body = reportWindow.document.body;
+    const title = reportWindow.document.createElement('h1');
+    title.textContent = (analysis.title || 'Analyse EBIOS RM') + ' – Rapport';
+    body.appendChild(title);
+
+    const pages = ['atelier1.html', 'atelier2.html', 'atelier3.html', 'atelier4.html', 'atelier5.html'];
+    for (const page of pages) {
+      await appendPageToReport(page, body, reportWindow.document);
+    }
+
+    reportWindow.focus();
+    reportWindow.print();
+  }
+
+  function appendPageToReport(page, targetBody, reportDoc) {
+    return new Promise(resolve => {
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.left = '-9999px';
+      iframe.src = page;
+      iframe.onload = () => {
+        setTimeout(() => {
+          const doc = iframe.contentDocument;
+          if (!doc) {
+            document.body.removeChild(iframe);
+            return resolve();
+          }
+          doc.querySelectorAll('canvas').forEach(c => {
+            const img = doc.createElement('img');
+            try {
+              img.src = c.toDataURL('image/png');
+            } catch (e) {
+              img.src = '';
+            }
+            img.width = c.width;
+            img.height = c.height;
+            img.className = c.className;
+            img.style.cssText = c.style.cssText;
+            c.parentNode.replaceChild(img, c);
+          });
+          const section = doc.querySelector('section.tab-content');
+          if (section) {
+            const imported = reportDoc.importNode(section, true);
+            imported.style.pageBreakAfter = 'always';
+            targetBody.appendChild(imported);
+          }
+          document.body.removeChild(iframe);
+          resolve();
+        }, 500);
+      };
+      document.body.appendChild(iframe);
+    });
+  }
+
   function setupAnalysisControls() {
     document.getElementById('analysis-title').addEventListener('input', (e) => {
       if (currentIndex < 0) return;
@@ -5679,6 +5742,10 @@
       a.click();
       document.body.removeChild(a);
     });
+    const pdfBtn = document.getElementById('export-pdf-btn');
+    if (pdfBtn) {
+      pdfBtn.addEventListener('click', exportPdfReport);
+    }
     document.getElementById('export-all-btn').addEventListener('click', () => {
       const blob = new Blob([JSON.stringify(analyses, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
