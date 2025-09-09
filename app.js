@@ -11,6 +11,40 @@
   let currentIndex = -1;
   let risquesChart;
 
+  function createPdfFromAnalysis(analysis) {
+    const lines = ['Rapport EBIOS RM', 'Titre: ' + (analysis.title || '')];
+    lines.push(...JSON.stringify(analysis, null, 2).split('\n'));
+    return createPdfFromText(lines);
+  }
+
+  function createPdfFromText(lines) {
+    function esc(s) {
+      return s.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+    }
+    const header = '%PDF-1.3\n';
+    const objects = [];
+    objects.push('1 0 obj<< /Type /Catalog /Pages 2 0 R>>endobj\n');
+    objects.push('2 0 obj<< /Type /Pages /Count 1 /Kids [3 0 R]>>endobj\n');
+    const textOps = lines.map(l => `(${esc(l)}) Tj T*`).join(' ');
+    const stream = `BT /F1 12 Tf 50 780 Td ${textOps} ET`;
+    objects.push('3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>endobj\n');
+    objects.push(`4 0 obj<< /Length ${stream.length} >>stream\n${stream}\nendstream\nendobj\n`);
+    objects.push('5 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica>>endobj\n');
+    let offsets = [];
+    let pdf = header;
+    for (const obj of objects) {
+      offsets.push(pdf.length);
+      pdf += obj;
+    }
+    const xrefStart = pdf.length;
+    pdf += 'xref\n0 ' + (objects.length + 1) + '\n0000000000 65535 f \n';
+    for (const off of offsets) {
+      pdf += off.toString().padStart(10, '0') + ' 00000 n \n';
+    }
+    pdf += `trailer<< /Size ${objects.length + 1} /Root 1 0 R>>\nstartxref\n${xrefStart}\n%%EOF`;
+    return pdf;
+  }
+
   function loadAnalyses() {
     try {
       const data = localStorage.getItem('ebiosAnalyses');
@@ -5679,6 +5713,22 @@
       a.click();
       document.body.removeChild(a);
     });
+    const exportPdfBtn = document.getElementById('export-pdf-btn');
+    if (exportPdfBtn) {
+      exportPdfBtn.addEventListener('click', () => {
+        if (currentIndex < 0) return;
+        const analysis = analyses[currentIndex];
+        const pdf = createPdfFromAnalysis(analysis);
+        const blob = new Blob([pdf], { type: 'application/pdf' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        const safeTitle = (analysis.title || 'analyse').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        a.download = safeTitle + '.pdf';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      });
+    }
     document.getElementById('export-all-btn').addEventListener('click', () => {
       const blob = new Blob([JSON.stringify(analyses, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
