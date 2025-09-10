@@ -5605,7 +5605,7 @@
     const reportWindow = window.open('', '_blank');
     if (!reportWindow) return;
 
-    reportWindow.document.write('<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Rapport EBIOS RM</title><link rel="stylesheet" href="styles.css"><style>section{page-break-after:always;margin-bottom:2rem;}h1{text-align:center;margin-top:0;}body{padding:20px;}</style></head><body></body></html>');
+    reportWindow.document.write('<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Rapport EBIOS RM</title><link rel="stylesheet" href="styles.css"><style>section{page-break-after:always;margin-bottom:2rem;}h1{text-align:center;margin-top:0;}body{padding:20px;}button{display:none;}*{overflow:visible!important;max-height:none!important;}</style></head><body></body></html>');
     reportWindow.document.close();
 
     const body = reportWindow.document.body;
@@ -5651,6 +5651,7 @@
           const section = doc.querySelector('section.tab-content');
           if (section) {
             const imported = reportDoc.importNode(section, true);
+            imported.querySelectorAll('button').forEach(btn => btn.remove());
             imported.style.pageBreakAfter = 'always';
             targetBody.appendChild(imported);
           }
