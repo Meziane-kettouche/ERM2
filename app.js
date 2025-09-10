@@ -5615,14 +5615,14 @@
 
     const pages = ['atelier1.html', 'atelier2.html', 'atelier3.html', 'atelier4.html', 'atelier5.html'];
     for (const page of pages) {
-      await appendPageToReport(page, body, reportWindow.document);
+      await appendPageToReport(page, body, reportWindow.document, analysis);
     }
 
     reportWindow.focus();
     reportWindow.print();
   }
 
-  function appendPageToReport(page, targetBody, reportDoc) {
+  function appendPageToReport(page, targetBody, reportDoc, analysis) {
     return new Promise(resolve => {
       const iframe = document.createElement('iframe');
       iframe.style.position = 'fixed';
@@ -5652,6 +5652,123 @@
           if (section) {
             const imported = reportDoc.importNode(section, true);
             imported.querySelectorAll('button').forEach(btn => btn.remove());
+            // Remove subtab navigation and display all subtab content
+            imported.querySelectorAll('.subtab-nav').forEach(nav => nav.remove());
+            imported.querySelectorAll('[class*="subtab-content"]').forEach(div => {
+              div.style.display = 'block';
+              div.classList.remove('active');
+            });
+            if (page === 'atelier1.html') {
+              const graph = imported.querySelector('#atelier1-graph');
+              if (graph) graph.remove();
+              const valuesTab = imported.querySelector('#atelier1-values-tab');
+              const missionsTable = imported.querySelector('#missions-table');
+              if (missionsTable) missionsTable.remove();
+              if (valuesTab) {
+                // Table: Valeurs métier et biens supports
+                const h1 = reportDoc.createElement('h3');
+                h1.textContent = 'Valeurs métier et biens supports';
+                valuesTab.appendChild(h1);
+                const table1 = reportDoc.createElement('table');
+                table1.className = 'data-table';
+                const thead1 = reportDoc.createElement('thead');
+                const hr1 = reportDoc.createElement('tr');
+                ['Valeur métier', 'Bien support', 'Description', 'Responsable'].forEach(t => {
+                  const th = reportDoc.createElement('th');
+                  th.textContent = t;
+                  hr1.appendChild(th);
+                });
+                thead1.appendChild(hr1);
+                table1.appendChild(thead1);
+                const tbody1 = reportDoc.createElement('tbody');
+                (analysis.data.missions || []).forEach(m => {
+                  if (Array.isArray(m.supports) && m.supports.length) {
+                    m.supports.forEach(s => {
+                      const tr = reportDoc.createElement('tr');
+                      let td = reportDoc.createElement('td');
+                      td.textContent = m.denom || '';
+                      tr.appendChild(td);
+                      td = reportDoc.createElement('td');
+                      td.textContent = s.name || '';
+                      tr.appendChild(td);
+                      td = reportDoc.createElement('td');
+                      td.textContent = s.description || '';
+                      tr.appendChild(td);
+                      td = reportDoc.createElement('td');
+                      td.textContent = s.responsable || '';
+                      tr.appendChild(td);
+                      tbody1.appendChild(tr);
+                    });
+                  } else {
+                    const tr = reportDoc.createElement('tr');
+                    let td = reportDoc.createElement('td');
+                    td.textContent = m.denom || '';
+                    tr.appendChild(td);
+                    td = reportDoc.createElement('td');
+                    tr.appendChild(td);
+                    td = reportDoc.createElement('td');
+                    tr.appendChild(td);
+                    td = reportDoc.createElement('td');
+                    tr.appendChild(td);
+                    tbody1.appendChild(tr);
+                  }
+                });
+                table1.appendChild(tbody1);
+                valuesTab.appendChild(table1);
+
+                // Table: Valeurs métier et évènements redoutés
+                const h2 = reportDoc.createElement('h3');
+                h2.textContent = 'Valeurs métier et évènements redoutés';
+                valuesTab.appendChild(h2);
+                const table2 = reportDoc.createElement('table');
+                table2.className = 'data-table';
+                const thead2 = reportDoc.createElement('thead');
+                const hr2 = reportDoc.createElement('tr');
+                ['Valeur métier', 'Évènement redouté', 'Description des impacts', 'Impact'].forEach(t => {
+                  const th = reportDoc.createElement('th');
+                  th.textContent = t;
+                  hr2.appendChild(th);
+                });
+                thead2.appendChild(hr2);
+                table2.appendChild(thead2);
+                const tbody2 = reportDoc.createElement('tbody');
+                (analysis.data.missions || []).forEach(m => {
+                  const events = (analysis.data.events || []).filter(ev => ev.missionId === m.id);
+                  if (events.length) {
+                    events.forEach(ev => {
+                      const tr = reportDoc.createElement('tr');
+                      let td = reportDoc.createElement('td');
+                      td.textContent = m.denom || '';
+                      tr.appendChild(td);
+                      td = reportDoc.createElement('td');
+                      td.textContent = ev.evenement || '';
+                      tr.appendChild(td);
+                      td = reportDoc.createElement('td');
+                      td.textContent = ev.impactDescription || '';
+                      tr.appendChild(td);
+                      td = reportDoc.createElement('td');
+                      td.textContent = ev.impact != null ? String(ev.impact) : '';
+                      tr.appendChild(td);
+                      tbody2.appendChild(tr);
+                    });
+                  } else {
+                    const tr = reportDoc.createElement('tr');
+                    let td = reportDoc.createElement('td');
+                    td.textContent = m.denom || '';
+                    tr.appendChild(td);
+                    td = reportDoc.createElement('td');
+                    tr.appendChild(td);
+                    td = reportDoc.createElement('td');
+                    tr.appendChild(td);
+                    td = reportDoc.createElement('td');
+                    tr.appendChild(td);
+                    tbody2.appendChild(tr);
+                  }
+                });
+                table2.appendChild(tbody2);
+                valuesTab.appendChild(table2);
+              }
+            }
             imported.style.pageBreakAfter = 'always';
             targetBody.appendChild(imported);
           }
