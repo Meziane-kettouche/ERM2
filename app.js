@@ -2762,7 +2762,10 @@
     const ppOptions = (analysis.data.ppc || []).map(pp => ({ value: pp.id, label: pp.nom || 'PP' }));
     // Build list of events (ER) from missions events
     const eventOptions = (analysis.data.events || []).map(ev => {
-      return { value: ev.id, label: ev.evenement || ev.ref || 'Évènement' };
+      const base = ev.evenement || ev.ref || 'Évènement';
+      const impact = parseInt(ev.impact, 10);
+      const sev = isNaN(impact) ? '' : ` (G${impact})`;
+      return { value: ev.id, label: base + sev };
     });
     // Helper to map impact level to color (1:green, 2:yellow, 3:orange, 4:red)
     const levelColor = (lvl) => {
