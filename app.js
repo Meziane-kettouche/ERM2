@@ -5769,6 +5769,27 @@
                 valuesTab.appendChild(table2);
               }
             }
+            // Replace form fields with plain text so all text is visible and colours are kept
+            imported.querySelectorAll('input, textarea, select').forEach(field => {
+              const tag = field.tagName.toLowerCase();
+              const replacement = reportDoc.createElement(tag === 'textarea' ? 'div' : 'span');
+              replacement.className = field.className;
+              replacement.style.cssText = field.style.cssText;
+              if (tag === 'textarea') {
+                replacement.style.whiteSpace = 'pre-wrap';
+                replacement.textContent = field.value || field.textContent || '';
+              } else if (tag === 'select') {
+                const opt = field.options[field.selectedIndex];
+                replacement.textContent = opt ? opt.textContent : '';
+              } else {
+                replacement.textContent = field.value || field.textContent || '';
+              }
+              field.parentNode.replaceChild(replacement, field);
+            });
+            // Ensure tables are fully displayed
+            imported.querySelectorAll('table').forEach(tbl => {
+              tbl.style.width = '100%';
+            });
             imported.style.pageBreakAfter = 'always';
             targetBody.appendChild(imported);
           }
