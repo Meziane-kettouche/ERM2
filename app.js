@@ -38,9 +38,12 @@
     localStorage.setItem('ebiosAnalyses', JSON.stringify(analyses));
   }
 
-  // Persist the ID of the currently selected analysis in localStorage so
-  // that navigating between separate workshop pages restores the same
-  // analysis automatically.
+  // Persist the currently selected analysis in localStorage so that
+  // navigating between separate workshop pages restores the same
+  // analysis automatically.  Both the stable `id` and the numerical
+  // index are saved.  Storing the index avoids having to search for the
+  // ID on the next page load, which previously could fail and caused the
+  // first analysis to be selected by default.
   function persistCurrentAnalysisId() {
     try {
       const sel = analyses[currentIndex];
@@ -48,6 +51,7 @@
         // Save any pending changes and remember the current analysis
         saveAnalyses();
         localStorage.setItem('ebiosCurrentAnalysisId', sel.id);
+        localStorage.setItem('ebiosCurrentAnalysisIndex', String(currentIndex));
       }
     } catch (e) {
       // Ignore storage errors (e.g., private browsing)
@@ -5794,16 +5798,24 @@
   // ----- Initialize
   function init() {
     loadAnalyses();
-    // Attempt to restore the previously selected analysis.  The ID of
-    // the last selected analysis is persisted in localStorage under
-    // `ebiosCurrentAnalysisId`.  If it exists and matches one of
-    // the loaded analyses, use that index; otherwise default to the
-    // first analysis.
+    // Attempt to restore the previously selected analysis.  We store both
+    // the index and the stable ID of the last selected analysis in
+    // localStorage.  Prefer the index (avoids an array search) and fall
+    // back to the ID if needed.
     let savedIndex = -1;
     try {
-      const savedId = localStorage.getItem('ebiosCurrentAnalysisId');
-      if (savedId) {
-        savedIndex = analyses.findIndex(a => a && a.id === savedId);
+      const storedIdx = localStorage.getItem('ebiosCurrentAnalysisIndex');
+      if (storedIdx !== null) {
+        const idx = parseInt(storedIdx, 10);
+        if (!isNaN(idx) && idx >= 0 && idx < analyses.length) {
+          savedIndex = idx;
+        }
+      }
+      if (savedIndex === -1) {
+        const savedId = localStorage.getItem('ebiosCurrentAnalysisId');
+        if (savedId) {
+          savedIndex = analyses.findIndex(a => a && a.id === savedId);
+        }
       }
     } catch (e) {
       savedIndex = -1;
