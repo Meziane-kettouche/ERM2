@@ -5631,9 +5631,31 @@
       iframe.onload = () => {
         setTimeout(() => {
           const doc = iframe.contentDocument;
+          const win = iframe.contentWindow;
           if (!doc) {
             document.body.removeChild(iframe);
             return resolve();
+          }
+          // Ensure that data for all sub‑tabs is rendered before we convert
+          // canvases to images and import the section into the report.
+          if (win) {
+            try {
+              if (page === 'atelier1.html') {
+                win.updateGapChart && win.updateGapChart();
+                win.renderSupportsQualifTable && win.renderSupportsQualifTable();
+              } else if (page === 'atelier3.html') {
+                win.updateAtelier3Chart && win.updateAtelier3Chart();
+              } else if (page === 'atelier5.html') {
+                win.renderGapActions && win.renderGapActions();
+                win.renderSupportActions && win.renderSupportActions();
+                win.renderPartiesActions && win.renderPartiesActions();
+                win.renderRisquesActions && win.renderRisquesActions();
+                win.renderPlanActions && win.renderPlanActions();
+                win.renderRisquesChart && win.renderRisquesChart();
+              }
+            } catch (e) {
+              // Ignore rendering errors; proceed with whatever content is available
+            }
           }
           doc.querySelectorAll('canvas').forEach(c => {
             const img = doc.createElement('img');
