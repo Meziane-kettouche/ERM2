@@ -9,6 +9,9 @@ function renderAtelier1Graph(nodes = [], links = []) {
   if (!svg || !tip) return;
   svg.innerHTML = '';
 
+  // Ensure the wrapper can scroll when the graph is tall
+  const wrapper = svg.closest('.graph-wrapper');
+
   const sevColor = s => ({1:'#22c55e',2:'#eab308',3:'#f97316',4:'#ef4444'}[s] || '#6ea8fe');
   const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
   const outEdges = {}, inEdges = {};
@@ -39,9 +42,15 @@ function renderAtelier1Graph(nodes = [], links = []) {
     return '#6ea8fe';
   }
 
-  const X = {valeur:160, support:540, event:900}, groups = {valeur:[], support:[], event:[]};
+  const X = {valeur:160, support:540, event:900};
+  const groups = {valeur:[], support:[], event:[]};
   nodes.forEach(n => groups[n.type].push(n));
-  const top = 80, gap = 100;
+  const top = 80, gap = 80;
+  const maxRows = Math.max(groups.valeur.length, groups.support.length, groups.event.length, 1);
+  const height = top + (maxRows - 1) * gap + top;
+  svg.setAttribute('viewBox', `0 0 1040 ${height}`);
+  svg.style.height = height + 'px';
+  if (wrapper) wrapper.scrollTop = 0;
   Object.keys(groups).forEach(t => groups[t].forEach((n,i) => { n.x = X[t]; n.y = top + i * gap; }));
 
   const NS = 'http://www.w3.org/2000/svg';
