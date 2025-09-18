@@ -1361,6 +1361,7 @@
   let currentImportType = null;
   let importSelections = new Set();
   let importItems = [];
+  let strategyEventTarget = null;
 
   function setupActionImport() {
     const confirmBtn = document.getElementById('import-confirm');
@@ -1376,7 +1377,9 @@
     const modal = document.getElementById('import-modal');
     if (!modal) return;
     currentImportType = type;
-    importSelections = new Set();
+    if (type !== 'strategyEvents') {
+      strategyEventTarget = null;
+    }
     const titleEl = document.getElementById('import-modal-title');
     const listEl = document.getElementById('import-list');
     const searchInput = document.getElementById('import-search');
@@ -1398,6 +1401,9 @@
         break;
       case 'risques':
         titleEl.textContent = 'Importer des risques';
+        break;
+      case 'strategyEvents':
+        titleEl.textContent = 'Sélectionner des évènements redoutés';
         break;
       default:
         titleEl.textContent = 'Importer';
@@ -1471,9 +1477,33 @@
       riskMap.forEach(obj => {
         items.push({ id: obj.id, label: obj.label, desc: obj.desc || '', extra: '' });
       });
+    } else if (type === 'strategyEvents') {
+      const missionMap = new Map();
+      (analysis.data.missions || []).forEach(m => {
+        if (m && m.id) {
+          const label = m.nom || m.name || m.titre || m.description || '';
+          missionMap.set(m.id, label);
+        }
+      });
+      (analysis.data.events || []).forEach(ev => {
+        if (!ev || !ev.id) return;
+        const label = ev.evenement || ev.ref || 'Évènement';
+        const desc = ev.impactDescription || '';
+        const parts = [];
+        const missionLabel = missionMap.get(ev.missionId);
+        if (missionLabel) parts.push(missionLabel);
+        const impact = parseInt(ev.impact, 10);
+        if (!isNaN(impact)) parts.push(`Gravité G${impact}`);
+        items.push({ id: ev.id, label, desc, extra: parts.join(' – ') });
+      });
     }
     // Render list
     listEl.innerHTML = '';
+    if (type === 'strategyEvents' && strategyEventTarget && Array.isArray(strategyEventTarget.eventIds)) {
+      importSelections = new Set(strategyEventTarget.eventIds);
+    } else {
+      importSelections = new Set();
+    }
     importItems = items;
     items.forEach(item => {
       const div = document.createElement('div');
@@ -1490,6 +1520,9 @@
       descEl.innerHTML = parts.join(' – ');
       div.appendChild(title);
       div.appendChild(descEl);
+      if (importSelections.has(item.id)) {
+        div.classList.add('selected');
+      }
       div.addEventListener('click', () => {
         const id = div.dataset.id;
         if (importSelections.has(id)) {
@@ -1530,6 +1563,7 @@
     if (modal) modal.style.display = 'none';
     importSelections = new Set();
     currentImportType = null;
+    strategyEventTarget = null;
     renderImportSelected();
   }
 
@@ -1616,6 +1650,22 @@
       });
       saveAnalyses();
       renderRisquesActions();
+    } else if (currentImportType === 'strategyEvents') {
+      if (strategyEventTarget) {
+        const events = analysis.data.events || [];
+        const ordered = [];
+        events.forEach(ev => {
+          if (ev && importSelections.has(ev.id)) {
+            ordered.push(ev.id);
+          }
+        });
+        importSelections.forEach(id => {
+          if (!ordered.includes(id)) ordered.push(id);
+        });
+        strategyEventTarget.eventIds = ordered;
+        saveAnalyses();
+        renderStrategies();
+      }
     }
     // Update plan actions after any import
     renderPlanActions();
@@ -2935,22 +2985,14 @@
       });
       const addEvBtn = document.createElement('button');
       addEvBtn.className = 'add-assoc-btn';
-      addEvBtn.textContent = '+ Ajouter';
+      addEvBtn.textContent = 'Sélectionner';
       addEvBtn.addEventListener('click', () => {
-        const available = eventOptions.filter(opt => !item.eventIds.includes(opt.value));
-        if (available.length === 0) {
-          alert('Aucun évènement redouté disponible à ajouter.');
+        if (eventOptions.length === 0) {
+          alert('Aucun évènement redouté disponible.');
           return;
         }
-        const msg = 'Sélectionnez un évènement :\n' + available.map((opt, i) => `${i + 1}. ${opt.label}`).join('\n');
-        const choice = prompt(msg);
-        if (choice === null) return;
-        const idxChoice = parseInt(choice, 10) - 1;
-        if (!isNaN(idxChoice) && idxChoice >= 0 && idxChoice < available.length) {
-          item.eventIds.push(available[idxChoice].value);
-          saveAnalyses();
-          renderStrategies();
-        }
+        strategyEventTarget = item;
+        openImportModal('strategyEvents');
       });
       eventCell.appendChild(addEvBtn);
       td.appendChild(eventCell);
