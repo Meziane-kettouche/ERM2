@@ -1368,6 +1368,8 @@
     if (confirmBtn) confirmBtn.addEventListener('click', () => applyImportSelection());
     const cancelBtn = document.getElementById('import-cancel');
     if (cancelBtn) cancelBtn.addEventListener('click', () => closeImportModal());
+    const selectAllBtn = document.getElementById('import-select-all');
+    if (selectAllBtn) selectAllBtn.addEventListener('click', () => importAllVisibleItems());
     const searchInput = document.getElementById('import-search');
     if (searchInput) searchInput.addEventListener('input', () => filterImportList(searchInput.value));
   }
@@ -1555,6 +1557,23 @@
         div.style.display = 'none';
       }
     });
+  }
+
+  function importAllVisibleItems() {
+    const listEl = document.getElementById('import-list');
+    if (!listEl) return;
+    let hasVisible = false;
+    Array.from(listEl.children).forEach(div => {
+      if (div.style.display === 'none') return;
+      const id = div.dataset.id;
+      if (!id) return;
+      hasVisible = true;
+      importSelections.add(id);
+      div.classList.add('selected');
+    });
+    if (!hasVisible || !importSelections.size) return;
+    renderImportSelected();
+    applyImportSelection();
   }
 
   // Close modal without applying changes
