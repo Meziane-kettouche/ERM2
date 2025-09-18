@@ -222,6 +222,15 @@
     return container;
   }
 
+  // Format a risk identifier by keeping only the characters before the first dash.
+  function formatRiskIdentifier(identifier) {
+    if (!identifier) return '';
+    const str = String(identifier).trim();
+    const dashIndex = str.search(/[-–—]/);
+    if (dashIndex === -1) return str;
+    return str.slice(0, dashIndex).trim();
+  }
+
   // ----- Atelier 1: Mission description
     function renderMissionDescription() {
       const textarea = document.getElementById('mission-description');
@@ -4218,8 +4227,10 @@
       const risk = riskMap.get(row.riskId) || { id: row.riskId, name: row.riskName, vraisemblance: row.residualV || 1, gravite: row.residualG || 1 };
       const initial = [risk.gravite, risk.vraisemblance];
       const residual = [row.residualG || risk.gravite, row.residualV || risk.vraisemblance];
-      initData.push({ value: initial, name: row.riskId || row.riskName, description: row.riskName || risk.name });
-      residData.push({ value: residual, name: row.riskId || row.riskName, description: row.riskName || risk.name });
+      const displayId = formatRiskIdentifier(row.riskId || '');
+      const label = displayId || row.riskName || risk.name;
+      initData.push({ value: initial, name: label, description: row.riskName || risk.name });
+      residData.push({ value: residual, name: label, description: row.riskName || risk.name });
       arrowData.push({ coords: [initial, residual] });
     });
     const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
@@ -4333,7 +4344,7 @@
         });
         tdId.appendChild(inpId);
       } else {
-        tdId.textContent = row.riskId || '';
+        tdId.textContent = formatRiskIdentifier(row.riskId || '');
       }
       tr.appendChild(tdId);
       const tdName = document.createElement('td');
