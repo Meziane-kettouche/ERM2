@@ -5231,15 +5231,69 @@
     });
 
     const nodes = Array.from(nodeMap.values());
-    const byType = {};
-    nodes.forEach(n => { (byType[n.type] ||= []).push(n); });
+    const laneOrder = ['source','objective','attack','inter','event'];
     const laneX = { source:110, objective:320, attack:540, inter:760, event:1000 };
-    const laneTop = 70, laneBottom = 500, gapY = 70;
-    Object.keys(byType).forEach(t => {
-      byType[t].forEach((n,i) => {
-        n.x = laneX[t];
-        n.y = Math.min(laneTop + i*gapY, laneBottom);
+    const laneTop = 70;
+    const laneBottom = 500;
+    const laneHeight = laneBottom - laneTop;
+
+    const byType = {};
+    nodes.forEach(n => {
+      n.x = laneX[n.type] || laneX.attack;
+      (byType[n.type] ||= []).push(n);
+    });
+
+    const minGapForCount = (count) => {
+      if (count <= 1) return laneHeight;
+      const theoretical = laneHeight / (count - 1);
+      return Math.min(110, Math.max(55, theoretical));
+    };
+
+    laneOrder.forEach((type, laneIndex) => {
+      const group = byType[type];
+      if (!group || !group.length) return;
+
+      const gap = minGapForCount(group.length);
+      const fallbackY = (i) => group.length === 1
+        ? laneTop + laneHeight / 2
+        : Math.min(laneBottom, laneTop + i * gap);
+      const desiredPositions = group.map((node, index) => {
+        const prevNeighbors = links
+          .filter(l => l.to === node && laneOrder.indexOf(l.from.type) < laneIndex)
+          .map(l => l.from);
+        const nextNeighbors = links
+          .filter(l => l.from === node && laneOrder.indexOf(l.to.type) > laneIndex)
+          .map(l => l.to);
+
+        const points = [];
+        prevNeighbors.forEach(n => { if (typeof n.y === 'number') points.push(n.y); });
+        nextNeighbors.forEach(n => { if (typeof n.y === 'number') points.push(n.y); });
+
+        let desired;
+        if (points.length) {
+          desired = points.reduce((sum, y) => sum + y, 0) / points.length;
+        } else {
+          desired = fallbackY(index);
+        }
+
+        desired = Math.max(laneTop, Math.min(laneBottom, desired));
+        return { node, index, desired };
+      }).sort((a, b) => a.desired - b.desired || a.index - b.index);
+
+      let lastY = laneTop - gap;
+      desiredPositions.forEach((entry, idx) => {
+        const remaining = desiredPositions.length - idx - 1;
+        const maxAllowed = laneBottom - remaining * gap;
+        let y = Math.max(entry.desired, lastY + gap);
+        y = Math.min(y, maxAllowed);
+        if (!Number.isFinite(y)) y = fallbackY(entry.index);
+        entry.node.y = y;
+        lastY = y;
       });
+
+      if (group.length === 1) {
+        group[0].y = laneTop + laneHeight / 2;
+      }
     });
 
     const colorByType = {
