@@ -5179,6 +5179,14 @@
 
     const nodeMap = new Map();
     const links = [];
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    const NODE_WIDTH = 190;
+    const HALF_WIDTH = NODE_WIDTH / 2;
+    const PADDING_X = 12;
+    const PADDING_Y = 14;
+    const LINE_HEIGHT = 16;
+    const MAX_TEXT_WIDTH = NODE_WIDTH - PADDING_X * 2;
+    const MAX_LINES = 4;
     const addNode = (key, type, label, details, severity) => {
       if (!key || nodeMap.has(key)) return nodeMap.get(key);
       const n = { id: key, type, label, details, severity };
@@ -5242,21 +5250,99 @@
     };
     const sevColor = { 1:'var(--g1)', 2:'var(--g2)', 3:'var(--g3)', 4:'var(--g4)' };
 
+    function clampWithEllipsis(tspan) {
+      let current = tspan.textContent || '';
+      if (!current) {
+        tspan.textContent = '…';
+        return;
+      }
+      if (!current.endsWith('…')) {
+        current += '…';
+        tspan.textContent = current;
+      }
+      while (tspan.getComputedTextLength() > MAX_TEXT_WIDTH && current.length) {
+        current = current.slice(0, -1);
+        tspan.textContent = current + '…';
+      }
+    }
+
+    function wrapSvgText(textEl, label) {
+      const words = (label || '').split(/\s+/).filter(Boolean);
+      const createTspan = (lineIndex) => {
+        const span = document.createElementNS(SVG_NS, 'tspan');
+        span.setAttribute('x', PADDING_X);
+        span.setAttribute('dy', lineIndex === 0 ? 0 : LINE_HEIGHT);
+        return span;
+      };
+
+      if (!words.length) {
+        const emptySpan = createTspan(0);
+        emptySpan.textContent = '';
+        textEl.appendChild(emptySpan);
+        return 1;
+      }
+
+      let line = '';
+      let lineIndex = 0;
+      let tspan = createTspan(lineIndex);
+      textEl.appendChild(tspan);
+
+      for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+        const testLine = line ? `${line} ${word}` : word;
+        tspan.textContent = testLine;
+
+        if (tspan.getComputedTextLength() > MAX_TEXT_WIDTH && line) {
+          // revert to previous line
+          tspan.textContent = line;
+          lineIndex++;
+          if (lineIndex >= MAX_LINES) {
+            clampWithEllipsis(tspan);
+            return MAX_LINES;
+          }
+          tspan = createTspan(lineIndex);
+          textEl.appendChild(tspan);
+          line = word;
+          tspan.textContent = word;
+          if (tspan.getComputedTextLength() > MAX_TEXT_WIDTH) {
+            clampWithEllipsis(tspan);
+            return lineIndex + 1;
+          }
+        } else if (tspan.getComputedTextLength() > MAX_TEXT_WIDTH) {
+          // Single long word on a fresh line
+          clampWithEllipsis(tspan);
+          return lineIndex + 1;
+        } else {
+          line = testLine;
+        }
+
+        if (i === words.length - 1) {
+          tspan.textContent = line;
+        }
+      }
+
+      return lineIndex + 1;
+    }
+
     function makeNode(n){
-      const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+      const g = document.createElementNS(SVG_NS,'g');
       g.classList.add('node');
       if (n.type === 'attack' || n.type === 'inter') g.classList.add('small');
-      g.setAttribute('transform',`translate(${n.x-95},${n.y-22})`);
-      const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
-      rect.setAttribute('width',190);
-      rect.setAttribute('height',44);
+      gNodes.appendChild(g);
+      const txt = document.createElementNS(SVG_NS,'text');
+      txt.setAttribute('x', PADDING_X);
+      txt.setAttribute('y', PADDING_Y + LINE_HEIGHT - 4);
+      g.appendChild(txt);
+      const labelText = (n.type === 'event' && n.severity) ? `${n.label} [G${n.severity}]` : n.label;
+      const lines = wrapSvgText(txt, labelText);
+      const nodeHeight = Math.max(44, lines * LINE_HEIGHT + PADDING_Y * 2);
+      g.setAttribute('transform',`translate(${n.x-HALF_WIDTH},${n.y-nodeHeight/2})`);
+      const rect = document.createElementNS(SVG_NS,'rect');
+      rect.setAttribute('width', NODE_WIDTH);
+      rect.setAttribute('height', nodeHeight);
       const fill = (n.type === 'event') ? (sevColor[n.severity] || 'var(--g2)') : (colorByType[n.type] || 'var(--panel)');
       rect.setAttribute('fill', fill);
-      g.appendChild(rect);
-      const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
-      txt.setAttribute('x',12); txt.setAttribute('y',26);
-      txt.textContent = (n.type === 'event' && n.severity) ? `${n.label} [G${n.severity}]` : n.label;
-      g.appendChild(txt);
+      g.insertBefore(rect, txt);
       g.addEventListener('mousemove', e => {
         if (!n.details) return;
         tip.style.left = e.clientX + 'px';
@@ -5266,14 +5352,13 @@
         tip.style.opacity = 1;
       });
       g.addEventListener('mouseleave', () => tip.style.opacity = 0);
-      gNodes.appendChild(g);
     }
 
     function linkPath(a,b){
       const bend = Math.max(20, Math.min(140, Math.abs(b.x - a.x)/2.5));
-      const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+      const p = document.createElementNS(SVG_NS,'path');
       p.setAttribute('class','link');
-      const d = `M ${a.x+95} ${a.y} C ${a.x+95+bend} ${a.y}, ${b.x-95-bend} ${b.y}, ${b.x-95} ${b.y}`;
+      const d = `M ${a.x+HALF_WIDTH} ${a.y} C ${a.x+HALF_WIDTH+bend} ${a.y}, ${b.x-HALF_WIDTH-bend} ${b.y}, ${b.x-HALF_WIDTH} ${b.y}`;
       p.setAttribute('d', d);
       gLinks.appendChild(p);
     }
