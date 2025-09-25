@@ -99,21 +99,55 @@
               <text x="480" y="206" class="radar-zone-label" text-anchor="middle">Zone de contrôle</text>
               <text x="480" y="258" class="radar-zone-label" text-anchor="middle">Zone de danger</text>
 
+              <g class="radar-axis-guide">
+                <line x1="480" y1="360" x2="770" y2="360" class="radar-axis-line" />
+                <polygon points="770,360 752,348 752,372" class="radar-axis-arrowhead" />
+                <text x="776" y="356" class="radar-axis-zero">0</text>
+                <text x="776" y="376" class="radar-axis-caption">Niveau de menace</text>
+              </g>
+
               <text x="480" y="80" class="radar-sector-tag" text-anchor="middle">Bénéficiaires</text>
               <text x="860" y="360" class="radar-sector-tag">Partenaires</text>
               <text x="480" y="700" class="radar-sector-tag" text-anchor="middle">Prestataires</text>
               <text x="100" y="360" class="radar-sector-tag" text-anchor="end">Interne/Autres</text>
 
-              <circle cx="480" cy="360" r="14" fill="var(--accent)" filter="url(#softShadow)"></circle>
+              <circle cx="480" cy="360" r="14" class="radar-origin"></circle>
               <text x="480" y="360" class="radar-label" text-anchor="middle" dy="-18">Objet de l'étude</text>
 
             <g id="radar-points"></g>
           </svg>
           <div id="atelier3-radar-tooltip" class="radar-tooltip"></div>
-          <div id="atelier3-radar-legend" class="radar-legend">
-            <div><strong>Couleur :</strong> niveau de fiabilité cyber (maturité & confiance de 1 = rouge à 4 = vert)</div>
-            <div><strong>Position radiale :</strong> indice de menace (zone de danger au centre → zone de confiance en périphérie)</div>
-            <div><strong>Quadrants :</strong> partenaires (droite), bénéficiaires (haut), interne/autres (gauche), prestataires (bas)</div>
+          <div id="atelier3-radar-legend" class="radar-legend stakeholder-legend">
+            <div class="legend-block legend-block--zones">
+              <div class="legend-title">Lecture des zones</div>
+              <div class="legend-areas">
+                <span class="legend-chip chip-confiance">Zone de confiance</span>
+                <span class="legend-chip chip-veille">Zone de veille</span>
+                <span class="legend-chip chip-controle">Zone de contrôle</span>
+                <span class="legend-chip chip-danger">Zone de danger</span>
+              </div>
+              <div class="legend-text">Partenaires (droite) · Bénéficiaires (haut) · Prestataires (bas) · Interne/Autres (gauche)</div>
+            </div>
+            <div class="legend-block">
+              <div class="legend-title">Exposition</div>
+              <div class="legend-subtitle">Dépendance × Pénétration</div>
+              <div class="legend-scale">
+                <span class="legend-dot expo-1">1</span>
+                <span class="legend-dot expo-2">2</span>
+                <span class="legend-dot expo-3">3</span>
+                <span class="legend-dot expo-4">4</span>
+              </div>
+            </div>
+            <div class="legend-block">
+              <div class="legend-title">Fiabilité cyber</div>
+              <div class="legend-subtitle">Maturité SSI × Confiance</div>
+              <div class="legend-scale legend-scale--outline">
+                <span class="legend-dot rel-1">1</span>
+                <span class="legend-dot rel-2">2</span>
+                <span class="legend-dot rel-3">3</span>
+                <span class="legend-dot rel-4">4</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
