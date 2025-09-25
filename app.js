@@ -5128,7 +5128,7 @@
     }
     function sizeForDependance(v) {
       const val = Math.max(1, Math.min(4, v));
-      return 4 + val * 2;
+      return 6 + val * 3;
     }
 
     const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-dark').trim() || '#0c1524';
@@ -5177,8 +5177,8 @@
       c.setAttribute('filter', 'url(#softShadow)');
 
       const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      t.setAttribute('x', p.x + 10);
-      t.setAttribute('y', p.y - 8);
+      t.setAttribute('x', p.x + 14);
+      t.setAttribute('y', p.y - 4);
       t.setAttribute('class', 'radar-label radar-small');
       t.textContent = item.nom || 'PP';
 
