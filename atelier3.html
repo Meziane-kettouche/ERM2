@@ -77,26 +77,27 @@
                 </filter>
               </defs>
 
+              <g id="radar-zones" opacity="0.92">
+                <circle cx="480" cy="360" r="260" class="radar-zone zone-confiance"></circle>
+                <circle cx="480" cy="360" r="208" class="radar-zone zone-veille"></circle>
+                <circle cx="480" cy="360" r="156" class="radar-zone zone-controle"></circle>
+                <circle cx="480" cy="360" r="104" class="radar-zone zone-danger"></circle>
+              </g>
+
               <g id="radar-grid">
-                <circle cx="480" cy="360" r="260" class="radar-ring radar-grid"></circle>
-                <circle cx="480" cy="360" r="208" class="radar-ring radar-grid"></circle>
-                <circle cx="480" cy="360" r="156" class="radar-ring radar-grid"></circle>
-                <circle cx="480" cy="360" r="104" class="radar-ring radar-grid"></circle>
-                <circle cx="480" cy="360" r="52"  class="radar-ring radar-grid"></circle>
-                <text x="532" y="360" class="radar-label radar-small">1</text>
-                <text x="584" y="360" class="radar-label radar-small">2</text>
-                <text x="636" y="360" class="radar-label radar-small">3</text>
-                <text x="688" y="360" class="radar-label radar-small">4</text>
-                <text x="740" y="360" class="radar-label radar-small">5</text>
+                <circle cx="480" cy="360" r="260" class="radar-ring"></circle>
+                <circle cx="480" cy="360" r="208" class="radar-ring"></circle>
+                <circle cx="480" cy="360" r="156" class="radar-ring"></circle>
+                <circle cx="480" cy="360" r="104" class="radar-ring"></circle>
+                <circle cx="480" cy="360" r="52"  class="radar-ring"></circle>
                 <line x1="220" y1="360" x2="740" y2="360" class="radar-cross"/>
                 <line x1="480" y1="100" x2="480" y2="620" class="radar-cross"/>
               </g>
 
-              <g id="radar-thresholds" opacity="0.95">
-              <circle cx="480" cy="360" r="245" class="radar-thick" stroke="var(--success)"></circle>
-              <circle cx="480" cy="360" r="205" class="radar-thick" stroke="var(--warning)"></circle>
-              <circle cx="480" cy="360" r="165" class="radar-thick" stroke="var(--danger)"></circle>
-              </g>
+              <text x="480" y="92" class="radar-zone-label" text-anchor="middle">Zone de confiance</text>
+              <text x="480" y="154" class="radar-zone-label" text-anchor="middle">Zone de veille</text>
+              <text x="480" y="206" class="radar-zone-label" text-anchor="middle">Zone de contrôle</text>
+              <text x="480" y="258" class="radar-zone-label" text-anchor="middle">Zone de danger</text>
 
               <text x="480" y="80" class="radar-sector-tag" text-anchor="middle">Bénéficiaires</text>
               <text x="860" y="360" class="radar-sector-tag">Partenaires</text>
@@ -104,14 +105,14 @@
               <text x="100" y="360" class="radar-sector-tag" text-anchor="end">Interne/Autres</text>
 
               <circle cx="480" cy="360" r="14" fill="var(--accent)" filter="url(#softShadow)"></circle>
-              <text x="480" y="360" class="radar-label" text-anchor="middle" dy="-18">Objet de l etude</text>
+              <text x="480" y="360" class="radar-label" text-anchor="middle" dy="-18">Objet de l'étude</text>
 
             <g id="radar-points"></g>
           </svg>
           <div id="atelier3-radar-tooltip" class="radar-tooltip"></div>
           <div id="atelier3-radar-legend" class="radar-legend">
-            <div><strong>Couleur :</strong> confiance / maturité SSI (1 rouge → 4 vert)</div>
-            <div><strong>Cercles :</strong> exposition (1 centre → 5 périphérie)</div>
+            <div><strong>Couleur :</strong> niveau de fiabilité cyber (maturité & confiance de 1 = rouge à 4 = vert)</div>
+            <div><strong>Position radiale :</strong> indice de menace (zone de danger au centre → zone de confiance en périphérie)</div>
             <div><strong>Quadrants :</strong> partenaires (droite), bénéficiaires (haut), interne/autres (gauche), prestataires (bas)</div>
           </div>
         </div>
@@ -120,7 +121,7 @@
           <div class="left">
             <!-- Cartography sub‑tab -->
             <div id="atelier3-carto-tab" class="atelier3-subtab-content active">
-              <p>Cartographiez les parties prenantes : nom, catégorie (prestataire, partenaire, bénéficiaire), biens supports associés, valeurs métier associées, dépendance et pénétration (1 = vert à 4 = rouge), maturité SSI et confiance (1 = rouge à 4 = vert). Les champs exposition, niveau SSI et indice de menace sont calculés automatiquement.</p>
+              <p>Cartographiez les parties prenantes : nom, catégorie (prestataire, partenaire, bénéficiaire), biens supports associés, valeurs métier associées, dépendance et pénétration (1 = vert à 4 = rouge), maturité SSI et confiance (1 = rouge à 4 = vert). L’exposition (<em>dépendance × pénétration</em>), la fiabilité cyber (<em>maturité × confiance</em>) et l’indice de menace (<em>exposition ÷ fiabilité</em>) sont calculés automatiquement.</p>
               <div class="table-container" style="overflow-x:auto; margin-bottom:1rem;">
                 <table id="ppc-table" class="data-table" style="min-width:100%;">
                   <thead>
@@ -134,9 +135,9 @@
                       <th>Maturité SSI</th>
                       <th>Confiance</th>
                       <th>Exposition</th>
-                      <th>Niveau SSI</th>
+                      <th>Fiabilité cyber</th>
                       <th>Indice de menace</th>
-                      <th>Coordonnées</th>
+                      <th>Zone & angle</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
