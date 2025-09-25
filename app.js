@@ -10,6 +10,7 @@
   let analyses = [];
   let currentIndex = -1;
   let risquesChart;
+  const RADAR_MAX_RADIUS = 260;
 
   function loadAnalyses() {
     try {
@@ -83,6 +84,22 @@
       case 4: return '#2a9d8f';
       default: return '#9aa0a6';
     }
+  }
+
+  // Determine the qualitative zone associated with a threat index.
+  function threatZoneMeta(indice) {
+    const value = Number.isFinite(indice) ? indice : 0;
+    if (value >= 3) return { key: 'danger', label: 'Zone de danger', bucket: 4 };
+    if (value >= 2) return { key: 'controle', label: 'Zone de contrôle', bucket: 3 };
+    if (value >= 1) return { key: 'veille', label: 'Zone de veille', bucket: 2 };
+    return { key: 'confiance', label: 'Zone de confiance', bucket: 1 };
+  }
+
+  function threatRadius(indice, maxR) {
+    const value = Math.max(0, Math.min(4, Number.isFinite(indice) ? indice : 0));
+    const outer = maxR * 0.88;
+    const inner = maxR * 0.28;
+    return outer - (outer - inner) * (value / 4);
   }
 
   // ----- Rendering functions
@@ -2708,9 +2725,9 @@
       td = document.createElement('td');
       td.className = 'expo-cell';
       tr.appendChild(td);
-      // Niveau SSI (computed)
+      // Fiabilité cyber (computed)
       td = document.createElement('td');
-      td.className = 'niveau-cell';
+      td.className = 'fiabilite-cell';
       tr.appendChild(td);
       // Indice de menace (computed)
       td = document.createElement('td');
@@ -2771,13 +2788,16 @@
         updateAtelier3Chart();
       };
     }
-    // Helper to update exposition, niveau SSI and indice cells
+    // Helper to update exposition, fiabilité et indice cells
     function updateDerivedCells(row, entry) {
       const expo = (entry.dependance || 1) * (entry.penetration || 1);
-      const niveau = (entry.maturite || 1) * (entry.confiance || 1);
-      const indice = niveau ? (expo / niveau) : 0;
+      const fiabilite = (entry.maturite || 1) * (entry.confiance || 1);
+      const indice = fiabilite ? (expo / fiabilite) : 0;
+      entry.exposition = expo;
+      entry.fiabilite = fiabilite;
+      entry.indiceMenace = indice;
       const expoCell = row.querySelector('.expo-cell');
-      const niveauCell = row.querySelector('.niveau-cell');
+      const fiabiliteCell = row.querySelector('.fiabilite-cell');
       const indiceCell = row.querySelector('.indice-cell');
       const coordCell = row.querySelector('.coord-cell');
       if (expoCell) {
@@ -2785,28 +2805,24 @@
         const bucket = pertinenceBucketForExpo(expo);
         expoCell.style.backgroundColor = levelColor(bucket);
       }
-      if (niveauCell) {
-        niveauCell.textContent = `${niveau}`;
-        const bucket = pertinenceBucketForExpo(niveau);
-        niveauCell.style.backgroundColor = ssiColor(bucket);
+      if (fiabiliteCell) {
+        fiabiliteCell.textContent = `${fiabilite}`;
+        const bucket = pertinenceBucketForExpo(fiabilite);
+        fiabiliteCell.style.backgroundColor = ssiColor(bucket);
       }
       if (indiceCell) {
         indiceCell.textContent = indice.toFixed(2);
-        // Colour based on indice: low values green, high values red
-        let indLvl;
-        if (indice >= 4) indLvl = 4;
-        else if (indice >= 3) indLvl = 3;
-        else if (indice >= 2) indLvl = 2;
-        else indLvl = 1;
-        indiceCell.style.backgroundColor = levelColor(indLvl);
+        const zone = threatZoneMeta(indice);
+        indiceCell.style.backgroundColor = levelColor(zone.bucket);
       }
       if (coordCell) {
-        const radius = Math.min(5, Math.max(1, Math.round((expo / 16) * 5)));
+        const zone = threatZoneMeta(indice);
         const angleMap = { partenaire: 0, beneficiaire: 90, interne: 180, autres: 180, prestataire: 270 };
         const angle = angleMap[entry.categorie] ?? 180;
-        coordCell.textContent = `${radius}, ${angle}°`;
-        entry.rayon = radius;
+        coordCell.textContent = `${zone.label} – ${angle}°`;
+        entry.rayon = threatRadius(indice, RADAR_MAX_RADIUS);
         entry.angle = angle;
+        entry.zoneMenace = zone.key;
       }
     }
     // Map exposition values to a bucket 1–4 similar to pertinence
@@ -5103,7 +5119,7 @@
     const pointsLayer = svg.querySelector('#radar-points');
     if (pointsLayer) pointsLayer.innerHTML = '';
     const center = { x: 480, y: 360 };
-    const maxR = 260;
+    const maxR = RADAR_MAX_RADIUS;
     const angleMap = { partenaire: 0, beneficiaire: 90, interne: 180, autres: 180, prestataire: 270 };
 
     function posFromPolar(r, deg) {
@@ -5115,21 +5131,39 @@
       return 4 + val * 2;
     }
 
-    const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-dark').trim();
+    const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-dark').trim() || '#0c1524';
+    tip.style.opacity = 0;
+    tip.innerHTML = '';
 
     ppc.forEach(item => {
       const dep = parseInt(item.dependance, 10) || 1;
       const pen = parseInt(item.penetration, 10) || 1;
       const mat = parseInt(item.maturite, 10) || 1;
       const conf = parseInt(item.confiance, 10) || 1;
-      const expo = dep * pen;
-      const radius = Math.min(5, Math.max(1, Math.round((expo / 16) * 5)));
+      const expoCandidate = (item.exposition !== undefined && item.exposition !== null && item.exposition !== '')
+        ? Number(item.exposition)
+        : NaN;
+      const fiabiliteCandidate = (item.fiabilite !== undefined && item.fiabilite !== null && item.fiabilite !== '')
+        ? Number(item.fiabilite)
+        : NaN;
+      const expo = Number.isFinite(expoCandidate) ? expoCandidate : (dep * pen);
+      const fiabilite = Number.isFinite(fiabiliteCandidate) ? fiabiliteCandidate : ((mat || 1) * (conf || 1));
+      const indiceCandidate = Number(item.indiceMenace);
+      const indice = Number.isFinite(indiceCandidate) ? indiceCandidate : (fiabilite ? expo / fiabilite : 0);
+      const zone = threatZoneMeta(indice);
       const angle = item.angle || angleMap[item.categorie] || 180;
       const colorLvl = Math.round((mat + conf) / 2);
-      const r = (radius / 5) * maxR;
-      const p = posFromPolar(r, angle);
+      const radialDistance = threatRadius(indice, maxR);
+      const p = posFromPolar(radialDistance, angle);
       const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       g.setAttribute('class', 'radar-point');
+      g.dataset.zone = zone.key;
+      item.exposition = expo;
+      item.fiabilite = fiabilite;
+      item.indiceMenace = indice;
+      item.angle = angle;
+      item.rayon = radialDistance;
+      item.zoneMenace = zone.key;
 
       const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       c.setAttribute('cx', p.x);
@@ -5138,7 +5172,8 @@
       c.setAttribute('fill', ssiColor(colorLvl));
       c.setAttribute('opacity', '0.95');
       c.setAttribute('stroke', borderColor);
-      c.setAttribute('stroke-opacity', '0.1');
+      c.setAttribute('stroke-opacity', '0.25');
+      c.setAttribute('stroke-width', '1.4');
       c.setAttribute('filter', 'url(#softShadow)');
 
       const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -5153,10 +5188,14 @@
 
       g.addEventListener('mousemove', (evt) => {
         const box = svg.getBoundingClientRect();
-        tip.style.left = (evt.clientX - box.left + 12) + 'px';
-        tip.style.top = (evt.clientY - box.top - 12) + 'px';
+        tip.style.left = (evt.clientX - box.left + 16) + 'px';
+        tip.style.top = (evt.clientY - box.top - 16) + 'px';
         tip.style.opacity = 1;
-        tip.textContent = `${item.nom || 'PP'} — r: ${radius} | angle: ${angle}°`;
+        tip.innerHTML = `<strong>${item.nom || 'PP'}</strong><br>` +
+          `Zone : ${zone.label}<br>` +
+          `Exposition : ${expo.toFixed(0)} – Fiabilité : ${fiabilite.toFixed(0)}<br>` +
+          `Indice de menace : ${indice.toFixed(2)}<br>` +
+          `Angle : ${angle}°`;
       });
       g.addEventListener('mouseleave', () => { tip.style.opacity = 0; });
     });

@@ -17,6 +17,10 @@
   --danger: #e74c3c;
   --success: #27ae60;
   --warning: #f39c12;
+  --zone-danger: rgba(230, 57, 70, 0.45);
+  --zone-controle: rgba(244, 162, 97, 0.35);
+  --zone-veille: rgba(42, 157, 143, 0.28);
+  --zone-confiance: rgba(56, 189, 248, 0.22);
   --border-radius: 4px;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
@@ -1086,19 +1090,28 @@ canvas {
 }
 .radar-ring {
   fill: none;
-  stroke-width: 2;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 1.5;
 }
-.radar-thick {
-  fill: none;
-  stroke-width: 10;
-  opacity: 0.85;
+.radar-zone {
+  stroke: none;
+  pointer-events: none;
 }
-.radar-grid {
-  stroke: var(--text-secondary);
-}
+.zone-confiance { fill: var(--zone-confiance); }
+.zone-veille { fill: var(--zone-veille); }
+.zone-controle { fill: var(--zone-controle); }
+.zone-danger { fill: var(--zone-danger); }
 .radar-cross {
-  stroke: var(--accent);
+  stroke: rgba(77, 163, 255, 0.45);
   stroke-dasharray: 6 6;
+}
+.radar-zone-label {
+  fill: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  pointer-events: none;
 }
 .radar-sector-tag {
   font-size: 13px;
@@ -1129,7 +1142,9 @@ canvas {
   pointer-events: none;
   opacity: 0;
   transform: translate(-50%, -12px);
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.4;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
 }
 
 .radar-legend {
