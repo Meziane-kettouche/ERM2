@@ -691,6 +691,7 @@ input[type="text"]:focus, input[type="number"]:focus, textarea:focus {
 }
 
 #atelier3-radar-wrapper.stakeholder-diagram {
+  position: relative;
   background: #0b0f16;
   border-radius: 18px;
   border: 1px solid #1c2633;
@@ -698,6 +699,7 @@ input[type="text"]:focus, input[type="number"]:focus, textarea:focus {
   padding: 1.5rem;
   display: grid;
   place-items: center;
+  overflow: visible;
 }
 
 #atelier3-radar-wrapper.stakeholder-diagram svg {
@@ -1261,6 +1263,107 @@ canvas {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+#atelier3-radar .radar-frame {
+  fill: rgba(15, 23, 42, 0.4);
+  stroke: rgba(148, 163, 184, 0.25);
+  stroke-width: 2;
+}
+
+#atelier3-radar .radar-axis {
+  stroke: rgba(148, 163, 184, 0.55);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+#atelier3-radar .radar-grid-line {
+  stroke: rgba(148, 163, 184, 0.28);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 6;
+}
+
+#atelier3-radar .radar-zone-title {
+  font-size: 14px;
+  fill: #e2e8f0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+#atelier3-radar .radar-scale-y text,
+#atelier3-radar .radar-scale-x text {
+  fill: #cbd5f5;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+#atelier3-radar .radar-axis-caption {
+  fill: #cbd5f5;
+  font-size: 13px;
+}
+
+#atelier3-radar .radar-legend {
+  pointer-events: none;
+  color: #e2e8f0;
+}
+
+#atelier3-radar .radar-legend-box {
+  fill: rgba(15, 23, 42, 0.72);
+  stroke: rgba(148, 163, 184, 0.25);
+  stroke-width: 1.5;
+}
+
+#atelier3-radar .radar-legend-title {
+  fill: #e2e8f0;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+#atelier3-radar .radar-legend-item text {
+  fill: #e2e8f0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+#atelier3-radar .legend-dot[data-cat="partenaire"] {
+  fill: #0ea5e9;
+}
+
+#atelier3-radar .legend-dot[data-cat="prestataire"] {
+  fill: #f97316;
+}
+
+#atelier3-radar .legend-dot[data-cat="beneficiaire"] {
+  fill: #22c55e;
+}
+
+#atelier3-radar .radar-connectors path {
+  stroke: rgba(125, 211, 252, 0.8);
+  stroke-width: 1.8;
+  fill: none;
+}
+
+#atelier3-radar .radar-connectors,
+#atelier3-radar .radar-labels,
+#atelier3-radar .radar-external-label,
+#atelier3-radar .radar-external-sub {
+  pointer-events: none;
+}
+
+#atelier3-radar .radar-external-label {
+  fill: #f8fafc;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+#atelier3-radar .radar-external-sub {
+  fill: #cbd5f5;
+  font-size: 11px;
+  font-weight: 500;
 }
 
 .stakeholder-legend {

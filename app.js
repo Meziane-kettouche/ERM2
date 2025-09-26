@@ -10,7 +10,6 @@
   let analyses = [];
   let currentIndex = -1;
   let risquesChart;
-  const RADAR_MAX_RADIUS = 260;
 
   function loadAnalyses() {
     try {
@@ -93,13 +92,6 @@
     if (value >= 2) return { key: 'controle', label: 'Zone de contrôle', bucket: 3 };
     if (value >= 1) return { key: 'veille', label: 'Zone de veille', bucket: 2 };
     return { key: 'confiance', label: 'Zone de confiance', bucket: 1 };
-  }
-
-  function threatRadius(indice, maxR) {
-    const value = Math.max(0, Math.min(4, Number.isFinite(indice) ? indice : 0));
-    const outer = maxR * 0.88;
-    const inner = maxR * 0.28;
-    return outer - (outer - inner) * (value / 4);
   }
 
   // ----- Rendering functions
@@ -2817,11 +2809,7 @@
       }
       if (coordCell) {
         const zone = threatZoneMeta(indice);
-        const angleMap = { partenaire: 0, beneficiaire: 90, interne: 180, autres: 180, prestataire: 270 };
-        const angle = angleMap[entry.categorie] ?? 180;
-        coordCell.textContent = `${zone.label} – ${angle}°`;
-        entry.rayon = threatRadius(indice, RADAR_MAX_RADIUS);
-        entry.angle = angle;
+        coordCell.textContent = `${zone.label} – Expo ${expo.toFixed(1)} / Fiab ${fiabilite.toFixed(1)}`;
         entry.zoneMenace = zone.key;
       }
     }
@@ -5117,23 +5105,86 @@
     const tip = document.getElementById('atelier3-radar-tooltip');
     if (!svg || !tip) return;
     const pointsLayer = svg.querySelector('#radar-points');
-    if (pointsLayer) pointsLayer.innerHTML = '';
-    const center = { x: 480, y: 360 };
-    const maxR = RADAR_MAX_RADIUS;
-    const angleMap = { partenaire: 0, beneficiaire: 90, interne: 180, autres: 180, prestataire: 270 };
+    const connectorsLayer = svg.querySelector('#radar-connectors');
+    const labelsLayer = svg.querySelector('#radar-labels');
+    if (!pointsLayer || !connectorsLayer || !labelsLayer) return;
 
-    function posFromPolar(r, deg) {
-      const rad = (deg - 90) * Math.PI / 180;
-      return { x: center.x + r * Math.cos(rad), y: center.y + r * Math.sin(rad) };
-    }
-    function sizeForDependance(v) {
-      const val = Math.max(1, Math.min(4, v));
-      return 6 + val * 3;
-    }
-
-    const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-dark').trim() || '#0c1524';
+    pointsLayer.innerHTML = '';
+    connectorsLayer.innerHTML = '';
+    labelsLayer.innerHTML = '';
     tip.style.opacity = 0;
+    tip.setAttribute('aria-hidden', 'true');
     tip.innerHTML = '';
+
+    const plot = {
+      x: Number(svg.getAttribute('data-plot-x')) || 230,
+      y: Number(svg.getAttribute('data-plot-y')) || 120,
+      width: Number(svg.getAttribute('data-plot-width')) || 500,
+      height: Number(svg.getAttribute('data-plot-height')) || 380
+    };
+    const centerX = plot.x + plot.width / 2;
+    const expoRange = { min: 0, max: 16 };
+    const fiabRange = { min: 0, max: 16 };
+    const categoryColours = {
+      partenaire: '#0ea5e9',
+      prestataire: '#f97316',
+      beneficiaire: '#22c55e',
+      interne: '#a855f7',
+      autres: '#94a3b8'
+    };
+    const categoryLabels = {
+      partenaire: 'Partenaire',
+      prestataire: 'Prestataire',
+      beneficiaire: 'Bénéficiaire',
+      interne: 'Interne',
+      autres: 'Autre'
+    };
+
+    const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+    const normalise = (value, range) => {
+      const numeric = Number(value);
+      const safe = Number.isFinite(numeric) ? numeric : range.min;
+      const clamped = clamp(safe, range.min, range.max);
+      return (clamped - range.min) / (range.max - range.min || 1);
+    };
+    const scaleX = (fiabilite) => plot.x + normalise(fiabilite, fiabRange) * plot.width;
+    const scaleY = (expo) => plot.y + plot.height - normalise(expo, expoRange) * plot.height;
+    const sizeForDependance = (v) => {
+      const val = Math.max(1, Math.min(4, v));
+      return 8 + val * 3;
+    };
+
+    const avoidOverlap = (x, y, r, placed) => {
+      let px = x;
+      let py = y;
+      const maxAttempts = 80;
+      const step = Math.max(6, r * 0.8);
+      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        let collides = false;
+        for (const other of placed) {
+          const dx = px - other.x;
+          const dy = py - other.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < r + other.r + 6) {
+            collides = true;
+            break;
+          }
+        }
+        if (!collides) {
+          return { x: px, y: py };
+        }
+        const angle = (attempt % 12) * (Math.PI / 6);
+        const radius = step * (1 + Math.floor(attempt / 12));
+        px = clamp(x + Math.cos(angle) * radius, plot.x + r, plot.x + plot.width - r);
+        py = clamp(y + Math.sin(angle) * radius, plot.y + r, plot.y + plot.height - r);
+      }
+      return { x: px, y: py };
+    };
+
+    const placedPoints = [];
+    const computedPoints = [];
+
+    const SVG_NS = 'http://www.w3.org/2000/svg';
 
     ppc.forEach(item => {
       const dep = parseInt(item.dependance, 10) || 1;
@@ -5151,54 +5202,153 @@
       const indiceCandidate = Number(item.indiceMenace);
       const indice = Number.isFinite(indiceCandidate) ? indiceCandidate : (fiabilite ? expo / fiabilite : 0);
       const zone = threatZoneMeta(indice);
-      const angle = item.angle || angleMap[item.categorie] || 180;
       const colorLvl = Math.round((mat + conf) / 2);
-      const radialDistance = threatRadius(indice, maxR);
-      const p = posFromPolar(radialDistance, angle);
-      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      const category = item.categorie || 'autres';
+      const baseX = scaleX(fiabilite);
+      const baseY = scaleY(expo);
+      const radius = sizeForDependance(dep);
+      const pos = avoidOverlap(baseX, baseY, radius, placedPoints);
+      placedPoints.push({ x: pos.x, y: pos.y, r: radius });
+
+      const g = document.createElementNS(SVG_NS, 'g');
       g.setAttribute('class', 'radar-point');
       g.dataset.zone = zone.key;
+
+      const c = document.createElementNS(SVG_NS, 'circle');
+      c.setAttribute('cx', pos.x);
+      c.setAttribute('cy', pos.y);
+      c.setAttribute('r', radius);
+      c.setAttribute('fill', ssiColor(colorLvl));
+      c.setAttribute('stroke', categoryColours[category] || '#38bdf8');
+      c.setAttribute('stroke-width', '2');
+      c.setAttribute('opacity', '0.95');
+      c.setAttribute('filter', 'url(#softShadow)');
+      g.appendChild(c);
+
+      const showTooltip = (evt) => {
+        const box = svg.getBoundingClientRect();
+        tip.style.left = `${evt.clientX - box.left + 14}px`;
+        tip.style.top = `${evt.clientY - box.top - 18}px`;
+        tip.innerHTML = `<strong>${item.nom || 'PP'}</strong><br>` +
+          `Catégorie : ${categoryLabels[category] || 'Autre'}<br>` +
+          `Exposition : ${expo.toFixed(1)} – Fiabilité : ${fiabilite.toFixed(1)}<br>` +
+          `Indice de menace : ${indice.toFixed(2)} (${zone.label})`;
+        tip.style.opacity = 1;
+        tip.setAttribute('aria-hidden', 'false');
+      };
+      const moveTooltip = (evt) => {
+        const box = svg.getBoundingClientRect();
+        tip.style.left = `${evt.clientX - box.left + 14}px`;
+        tip.style.top = `${evt.clientY - box.top - 18}px`;
+      };
+      const hideTooltip = () => {
+        tip.style.opacity = 0;
+        tip.setAttribute('aria-hidden', 'true');
+      };
+
+      g.addEventListener('mouseenter', showTooltip);
+      g.addEventListener('mousemove', moveTooltip);
+      g.addEventListener('mouseleave', hideTooltip);
+
+      pointsLayer.appendChild(g);
+
       item.exposition = expo;
       item.fiabilite = fiabilite;
       item.indiceMenace = indice;
-      item.angle = angle;
-      item.rayon = radialDistance;
       item.zoneMenace = zone.key;
+      item.chartX = pos.x;
+      item.chartY = pos.y;
 
-      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      c.setAttribute('cx', p.x);
-      c.setAttribute('cy', p.y);
-      c.setAttribute('r', sizeForDependance(dep));
-      c.setAttribute('fill', ssiColor(colorLvl));
-      c.setAttribute('opacity', '0.95');
-      c.setAttribute('stroke', borderColor);
-      c.setAttribute('stroke-opacity', '0.25');
-      c.setAttribute('stroke-width', '1.4');
-      c.setAttribute('filter', 'url(#softShadow)');
-
-      const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      t.setAttribute('x', p.x + 14);
-      t.setAttribute('y', p.y - 4);
-      t.setAttribute('class', 'radar-label radar-small');
-      t.textContent = item.nom || 'PP';
-
-      g.appendChild(c);
-      g.appendChild(t);
-      pointsLayer.appendChild(g);
-
-      g.addEventListener('mousemove', (evt) => {
-        const box = svg.getBoundingClientRect();
-        tip.style.left = (evt.clientX - box.left + 16) + 'px';
-        tip.style.top = (evt.clientY - box.top - 16) + 'px';
-        tip.style.opacity = 1;
-        tip.innerHTML = `<strong>${item.nom || 'PP'}</strong><br>` +
-          `Zone : ${zone.label}<br>` +
-          `Exposition : ${expo.toFixed(0)} – Fiabilité : ${fiabilite.toFixed(0)}<br>` +
-          `Indice de menace : ${indice.toFixed(2)}<br>` +
-          `Angle : ${angle}°`;
+      computedPoints.push({
+        item,
+        x: pos.x,
+        y: pos.y,
+        radius,
+        color: categoryColours[category] || '#38bdf8',
+        categoryLabel: categoryLabels[category] || 'Autre'
       });
-      g.addEventListener('mouseleave', () => { tip.style.opacity = 0; });
     });
+
+    const labelSpacing = 34;
+    const minY = plot.y + 18;
+    const maxY = plot.y + plot.height - 18;
+
+    const computeLabelPositions = (points) => {
+      if (!points.length) return [];
+      const positions = points.map(pt => clamp(pt.y, minY, maxY));
+      for (let i = 1; i < positions.length; i++) {
+        if (positions[i] < positions[i - 1] + labelSpacing) {
+          positions[i] = positions[i - 1] + labelSpacing;
+        }
+      }
+      const lastIndex = positions.length - 1;
+      if (positions[lastIndex] > maxY) {
+        positions[lastIndex] = maxY;
+        for (let i = lastIndex - 1; i >= 0; i--) {
+          const maxPos = positions[i + 1] - labelSpacing;
+          if (positions[i] > maxPos) {
+            positions[i] = maxPos;
+          }
+        }
+      }
+      if (positions[0] < minY) {
+        const shift = minY - positions[0];
+        for (let i = 0; i < positions.length; i++) {
+          positions[i] += shift;
+        }
+      }
+      for (let i = 1; i < positions.length; i++) {
+        if (positions[i] < positions[i - 1] + labelSpacing) {
+          positions[i] = Math.min(maxY, positions[i - 1] + labelSpacing);
+        }
+      }
+      return positions;
+    };
+
+    const placeLabels = (points, side) => {
+      const positions = computeLabelPositions(points);
+      const anchor = side === 'left' ? 'end' : 'start';
+      const labelX = side === 'left' ? plot.x - 200 : plot.x + plot.width + 200;
+      const elbowX = side === 'left' ? plot.x - 60 : plot.x + plot.width + 60;
+      const offsetX = side === 'left' ? -12 : 12;
+
+      points.forEach((point, idx) => {
+        const labelY = positions[idx];
+
+        const connector = document.createElementNS(SVG_NS, 'path');
+        connector.setAttribute('d', `M${labelX + offsetX},${labelY} L${elbowX},${labelY} L${point.x},${point.y}`);
+        connector.setAttribute('marker-end', 'url(#radar-arrow)');
+        connector.setAttribute('stroke', point.color);
+        connectorsLayer.appendChild(connector);
+
+        const text = document.createElementNS(SVG_NS, 'text');
+        text.setAttribute('class', 'radar-external-label');
+        text.setAttribute('x', labelX);
+        text.setAttribute('y', labelY);
+        text.setAttribute('text-anchor', anchor);
+        text.setAttribute('dominant-baseline', 'middle');
+
+        const nameSpan = document.createElementNS(SVG_NS, 'tspan');
+        nameSpan.textContent = point.item.nom || 'PP';
+        text.appendChild(nameSpan);
+
+        if (point.categoryLabel) {
+          const catSpan = document.createElementNS(SVG_NS, 'tspan');
+          catSpan.setAttribute('class', 'radar-external-sub');
+          catSpan.setAttribute('x', labelX);
+          catSpan.setAttribute('dy', '16');
+          catSpan.textContent = point.categoryLabel;
+          text.appendChild(catSpan);
+        }
+
+        labelsLayer.appendChild(text);
+      });
+    };
+
+    const leftPoints = computedPoints.filter(p => p.x < centerX).sort((a, b) => a.y - b.y);
+    const rightPoints = computedPoints.filter(p => p.x >= centerX).sort((a, b) => a.y - b.y);
+    placeLabels(leftPoints, 'left');
+    placeLabels(rightPoints, 'right');
   }
 
   function renderStrategicGraph() {
