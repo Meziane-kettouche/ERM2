@@ -675,6 +675,74 @@ input[type="text"]:focus, input[type="number"]:focus, textarea:focus {
   position: relative;
 }
 
+#atelier3-chart-container-top.stakeholder-wrapper {
+  padding: 0;
+  background: none;
+  border: none;
+  max-width: 100%;
+  overflow: visible;
+  min-width: 0;
+  margin: 0 auto 1.5rem;
+}
+
+#atelier3-chart-container-top.stakeholder-wrapper::before,
+#atelier3-chart-container-top.stakeholder-wrapper::after {
+  display: none;
+}
+
+#atelier3-radar-wrapper.stakeholder-diagram {
+  background: #0b0f16;
+  border-radius: 18px;
+  border: 1px solid #1c2633;
+  box-shadow: 0 22px 36px rgba(0, 0, 0, 0.28);
+  padding: 1.5rem;
+  display: grid;
+  place-items: center;
+}
+
+#atelier3-radar-wrapper.stakeholder-diagram svg {
+  width: min(1200px, 96vw);
+  height: auto;
+  display: block;
+}
+
+#atelier3-radar-wrapper.stakeholder-diagram .pill {
+  fill: #113018;
+  stroke: #2f6a37;
+  stroke-width: 1;
+}
+
+#atelier3-radar-wrapper.stakeholder-diagram .pill-blue {
+  fill: #0e273a;
+  stroke: #2b5878;
+  stroke-width: 1;
+}
+
+#atelier3-radar-wrapper.stakeholder-diagram .tag {
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  fill: #e8ecf1;
+}
+
+#atelier3-radar-wrapper.stakeholder-diagram .label {
+  font-size: 15px;
+  fill: #d1d9e6;
+}
+
+#atelier3-radar-wrapper.stakeholder-diagram .small {
+  font-size: 12px;
+}
+
+#atelier3-radar-wrapper.stakeholder-diagram .legendbox {
+  fill: #0d121a;
+  stroke: #26303c;
+  stroke-width: 1;
+}
+
+#atelier3-radar-wrapper.stakeholder-diagram .zoneBadge text {
+  dominant-baseline: middle;
+}
+
 /* Supports list inside missions */
 .supports-list {
   display: flex;
