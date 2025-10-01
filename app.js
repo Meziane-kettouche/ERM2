@@ -9,9 +9,17 @@
   // ----- Data model and persistence
   let analyses = [];
   let currentIndex = -1;
-  let risquesChart;
-  let stakeholderChartInstance;
+  let stakeholderCanvas;
+  let stakeholderCtx;
   let stakeholderChartResizeBound = false;
+  let stakeholderPoints = [];
+  let stakeholderTooltipEl;
+
+  let risquesCanvas;
+  let risquesCtx;
+  let risquesChartResizeBound = false;
+  let risquesPoints = [];
+  let risquesTooltipEl;
 
   function loadAnalyses() {
     try {
@@ -4190,17 +4198,113 @@
   }
 
   // Render actions for risks: show each risk and allow adding actions and residual levels
-  function renderRisquesChart() {
-    const el = document.getElementById('risques-chart');
-    if (!el || typeof echarts === 'undefined') return;
-    if (!risquesChart) {
-      risquesChart = echarts.init(el);
-    } else {
-      risquesChart.resize();
+  function ensureRisquesCanvas() {
+    const canvas = document.getElementById('risques-chart');
+    if (!canvas) return null;
+    if (risquesCanvas !== canvas) {
+      risquesCanvas = canvas;
+      risquesCtx = canvas.getContext('2d');
+      risquesPoints = [];
+      if (risquesTooltipEl) {
+        risquesTooltipEl.remove();
+        risquesTooltipEl = null;
+      }
+      delete canvas.dataset.eventsBound;
     }
+    if (!risquesCtx) return null;
+
+    const container = canvas.parentElement || canvas;
+    if (!risquesTooltipEl) {
+      risquesTooltipEl = document.createElement('div');
+      risquesTooltipEl.className = 'risques-tooltip';
+      risquesTooltipEl.setAttribute('aria-hidden', 'true');
+      risquesTooltipEl.style.opacity = '0';
+      container.appendChild(risquesTooltipEl);
+    }
+    if (!canvas.dataset.eventsBound) {
+      canvas.addEventListener('mousemove', handleRisquesHover);
+      canvas.addEventListener('mouseleave', hideRisquesTooltip);
+      canvas.dataset.eventsBound = 'true';
+    }
+
+    const ratio = window.devicePixelRatio || 1;
+    const width = container.clientWidth || canvas.clientWidth || 640;
+    const height = canvas.clientHeight || 400;
+    const targetWidth = Math.round(width * ratio);
+    const targetHeight = Math.round(height * ratio);
+    if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+    }
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
+    risquesCtx.setTransform(1, 0, 0, 1, 0, 0);
+    risquesCtx.scale(ratio, ratio);
+
+    if (!risquesChartResizeBound) {
+      risquesChartResizeBound = true;
+      window.addEventListener('resize', () => {
+        requestAnimationFrame(() => renderRisquesChart());
+      });
+    }
+
+    return { canvas, ctx: risquesCtx, width, height };
+  }
+
+  function hideRisquesTooltip() {
+    if (risquesTooltipEl) {
+      risquesTooltipEl.style.opacity = '0';
+      risquesTooltipEl.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  function handleRisquesHover(evt) {
+    if (!risquesCanvas || !risquesTooltipEl) return;
+    const rect = risquesCanvas.getBoundingClientRect();
+    const x = evt.clientX - rect.left;
+    const y = evt.clientY - rect.top;
+    let found = null;
+    for (const point of risquesPoints) {
+      const dx = x - point.x;
+      const dy = y - point.y;
+      if (Math.hypot(dx, dy) <= point.radius) {
+        found = point;
+        break;
+      }
+    }
+    if (!found) {
+      hideRisquesTooltip();
+      return;
+    }
+    risquesTooltipEl.innerHTML = [
+      `<strong>${found.label}</strong>`,
+      found.description ? found.description : '',
+      `Gravité : ${found.gravite}`,
+      `Vraisemblance : ${found.vraisemblance}`,
+      `Type : ${found.type}`
+    ].filter(Boolean).join('<br/>');
+    risquesTooltipEl.style.left = `${x}px`;
+    risquesTooltipEl.style.top = `${y}px`;
+    risquesTooltipEl.style.opacity = '1';
+    risquesTooltipEl.setAttribute('aria-hidden', 'false');
+  }
+
+  function renderRisquesChart() {
+    const canvasInfo = ensureRisquesCanvas();
+    if (!canvasInfo) return;
     const analysis = analyses[currentIndex];
+    const { ctx, width, height } = canvasInfo;
+    hideRisquesTooltip();
+    risquesPoints = [];
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, width, height);
+
     if (!analysis || !analysis.data) {
-      risquesChart.clear();
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '14px "Segoe UI", system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Ajoutez des risques et des actions pour visualiser la matrice.', width / 2, height / 2);
       return;
     }
     const riskMap = new Map();
@@ -4241,68 +4345,138 @@
       const label = displayId || row.riskName || risk.name;
       initData.push({ value: initial, name: label, description: row.riskName || risk.name });
       residData.push({ value: residual, name: label, description: row.riskName || risk.name });
-      arrowData.push({ coords: [initial, residual] });
+      arrowData.push({ from: initial, to: residual, label, description: row.riskName || risk.name });
     });
-    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-    const danger = getComputedStyle(document.documentElement).getPropertyValue('--danger').trim();
-    const secondary = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim();
-    const option = {
-      tooltip: {
-        trigger: 'item',
-        formatter: function (params) {
-          if (params.seriesType === 'scatter') {
-            return `<strong>${params.data.name}</strong><br/>${params.data.description}<br/>Gravité: ${params.data.value[0]}<br/>Vraisemblance: ${params.data.value[1]}`;
-          }
-          return '';
-        }
-      },
-      legend: {
-        data: ['Initial', 'Résiduel', '-->'],
-        bottom: 0,
-        selected: { '-->': true },
-        selectedMode: 'multiple'
-      },
-      xAxis: { name: 'Gravité', type: 'value', min: 0, max: 4 },
-      yAxis: { name: 'Vraisemblance', type: 'value', min: 0, max: 4 },
-      series: [
-        {
-          name: 'Initial',
-          type: 'scatter',
-          data: initData,
-          itemStyle: { color: accent },
-          symbolSize: 20,
-          label: { show: true, formatter: '{b}', position: 'top', fontSize: 12, color: accent }
-        },
-        {
-          name: 'Résiduel',
-          type: 'scatter',
-          data: residData,
-          itemStyle: { color: danger },
-          symbolSize: 15,
-          label: { show: true, formatter: '{b}', position: 'bottom', fontSize: 12, color: danger }
-        },
-        {
-          name: '-->',
-          type: 'lines',
-          coordinateSystem: 'cartesian2d',
-          data: arrowData,
-          lineStyle: { color: secondary, width: 2, type: 'dotted', opacity: 1 },
-          effect: { show: true, symbol: 'arrow', color: secondary, symbolSize: 10, trailLength: 0 }
-        }
-      ]
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#22c55e';
+    const danger = getComputedStyle(document.documentElement).getPropertyValue('--danger').trim() || '#ef4444';
+    const secondary = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#cbd5e1';
+
+    const margin = { top: 50, right: 40, bottom: 60, left: 70 };
+    const plotWidth = width - margin.left - margin.right;
+    const plotHeight = height - margin.top - margin.bottom;
+
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(margin.left, margin.top, plotWidth, plotHeight);
+    ctx.strokeStyle = 'rgba(148,163,184,0.25)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const x = margin.left + (plotWidth / 4) * i;
+      ctx.beginPath();
+      ctx.moveTo(x, margin.top);
+      ctx.lineTo(x, margin.top + plotHeight);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(margin.left, margin.top + plotHeight - (plotHeight / 4) * i);
+      ctx.lineTo(margin.left + plotWidth, margin.top + plotHeight - (plotHeight / 4) * i);
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(margin.left, margin.top, plotWidth, plotHeight);
+
+    ctx.fillStyle = '#e5e7eb';
+    ctx.font = '20px "Segoe UI", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Matrice Gravité / Vraisemblance', width / 2, 28);
+
+    ctx.font = '13px "Segoe UI", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    for (let i = 0; i <= 4; i++) {
+      const x = margin.left + (plotWidth / 4) * i;
+      ctx.fillText(i.toString(), x, margin.top + plotHeight + 24);
+    }
+    ctx.save();
+    ctx.translate(margin.left - 28, margin.top + plotHeight / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText('Vraisemblance', 0, 0);
+    ctx.restore();
+    ctx.fillText('Gravité', margin.left + plotWidth / 2, margin.top + plotHeight + 45);
+
+    ctx.textAlign = 'left';
+    const legendItems = [
+      { color: accent, label: 'Position initiale' },
+      { color: danger, label: 'Position résiduelle' },
+      { color: secondary, label: 'Action (trajet)' }
+    ];
+    legendItems.forEach((item, idx) => {
+      const lx = margin.left + idx * 180;
+      const ly = height - 24;
+      ctx.fillStyle = item.color;
+      ctx.fillRect(lx, ly - 8, 18, 18);
+      ctx.fillStyle = '#e5e7eb';
+      ctx.fillText(item.label, lx + 26, ly + 1);
+    });
+
+    const toCanvasCoords = ([grav, vraisem]) => {
+      const x = margin.left + (grav / 4) * plotWidth;
+      const y = margin.top + plotHeight - (vraisem / 4) * plotHeight;
+      return { x, y };
     };
-    risquesChart.setOption(option);
-    risquesChart.off('legendselectchanged');
-    risquesChart.on('legendselectchanged', function (event) {
-      if (event.name === '-->') {
-        const sel = event.selected['-->'];
-        const opt = risquesChart.getOption();
-        const arrow = opt.series[2];
-        arrow.lineStyle.opacity = sel ? 1 : 0;
-        arrow.effect.show = sel;
-        risquesChart.setOption({ series: opt.series });
-      }
+
+    arrowData.forEach(entry => {
+      const from = toCanvasCoords(entry.from);
+      const to = toCanvasCoords(entry.to);
+      ctx.strokeStyle = secondary;
+      ctx.setLineDash([6, 4]);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const angle = Math.atan2(to.y - from.y, to.x - from.x);
+      const size = 10;
+      ctx.fillStyle = secondary;
+      ctx.beginPath();
+      ctx.moveTo(to.x, to.y);
+      ctx.lineTo(to.x - size * Math.cos(angle - Math.PI / 6), to.y - size * Math.sin(angle - Math.PI / 6));
+      ctx.lineTo(to.x - size * Math.cos(angle + Math.PI / 6), to.y - size * Math.sin(angle + Math.PI / 6));
+      ctx.closePath();
+      ctx.fill();
     });
+
+    function drawPoints(dataset, color, type, radius, position) {
+      ctx.fillStyle = color;
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2;
+      dataset.forEach(point => {
+        const { x, y } = toCanvasCoords(point.value);
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#e5e7eb';
+        ctx.font = '12px "Segoe UI", system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const labelOffset = position === 'bottom' ? radius + 12 : -(radius + 12);
+        ctx.fillText(point.name, x, y + labelOffset);
+        ctx.fillStyle = color;
+        risquesPoints.push({
+          x,
+          y,
+          radius: radius + 6,
+          label: point.name,
+          description: point.description,
+          gravite: point.value[0],
+          vraisemblance: point.value[1],
+          type
+        });
+      });
+    }
+
+    const initialRadius = Math.max(7, Math.min(14, plotWidth / 30));
+    const residualRadius = Math.max(6, Math.min(12, plotWidth / 36));
+    drawPoints(initData, accent, 'Initial', initialRadius, 'top');
+    drawPoints(residData, danger, 'Résiduel', residualRadius, 'bottom');
+
+    if (!initData.length && !residData.length) {
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '14px "Segoe UI", system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Aucune action de traitement de risque enregistrée.', width / 2, margin.top + plotHeight / 2);
+    }
   }
 
   // Render actions for risks: show each risk and allow adding actions and residual levels
@@ -5105,25 +5279,66 @@
     });
   } 
 
-  function ensureStakeholderChart() {
+  function ensureStakeholderCanvas() {
     const container = document.getElementById('atelier3-stakeholder-chart');
-    if (!container || typeof echarts === 'undefined') return null;
-    if (stakeholderChartInstance && stakeholderChartInstance.getDom() !== container) {
-      stakeholderChartInstance.dispose();
-      stakeholderChartInstance = null;
+    if (!container) return null;
+
+    if (!stakeholderCanvas || stakeholderCanvas.parentElement !== container) {
+      container.innerHTML = '';
+      stakeholderCanvas = document.createElement('canvas');
+      stakeholderCanvas.id = 'atelier3-stakeholder-canvas';
+      stakeholderCanvas.setAttribute('role', 'presentation');
+      stakeholderCanvas.setAttribute('aria-hidden', 'true');
+      stakeholderCanvas.style.width = '100%';
+      stakeholderCanvas.style.height = '100%';
+      container.appendChild(stakeholderCanvas);
+      stakeholderCtx = stakeholderCanvas.getContext('2d');
+      stakeholderPoints = [];
+      if (stakeholderTooltipEl) {
+        stakeholderTooltipEl.remove();
+        stakeholderTooltipEl = null;
+      }
     }
-    if (!stakeholderChartInstance) {
-      stakeholderChartInstance = echarts.init(container);
+
+    if (!stakeholderTooltipEl) {
+      stakeholderTooltipEl = document.createElement('div');
+      stakeholderTooltipEl.id = 'stakeholder-tooltip';
+      stakeholderTooltipEl.className = 'stakeholder-tooltip';
+      stakeholderTooltipEl.setAttribute('aria-hidden', 'true');
+      stakeholderTooltipEl.style.opacity = '0';
+      container.appendChild(stakeholderTooltipEl);
     }
+
+    if (stakeholderCanvas && !stakeholderCanvas.dataset.eventsBound) {
+      stakeholderCanvas.addEventListener('mousemove', handleStakeholderHover);
+      stakeholderCanvas.addEventListener('mouseleave', hideStakeholderTooltip);
+      stakeholderCanvas.dataset.eventsBound = 'true';
+    }
+
+    if (!stakeholderCtx) return null;
+
+    const ratio = window.devicePixelRatio || 1;
+    const width = container.clientWidth || 600;
+    const height = container.clientHeight || 520;
+    const targetWidth = Math.round(width * ratio);
+    const targetHeight = Math.round(height * ratio);
+    if (stakeholderCanvas.width !== targetWidth || stakeholderCanvas.height !== targetHeight) {
+      stakeholderCanvas.width = targetWidth;
+      stakeholderCanvas.height = targetHeight;
+    }
+    stakeholderCanvas.style.width = width + 'px';
+    stakeholderCanvas.style.height = height + 'px';
+    stakeholderCtx.setTransform(1, 0, 0, 1, 0, 0);
+    stakeholderCtx.scale(ratio, ratio);
+
     if (!stakeholderChartResizeBound) {
       stakeholderChartResizeBound = true;
       window.addEventListener('resize', () => {
-        if (stakeholderChartInstance) {
-          stakeholderChartInstance.resize();
-        }
+        requestAnimationFrame(() => updateAtelier3Chart());
       });
     }
-    return stakeholderChartInstance;
+
+    return { ctx: stakeholderCtx, canvas: stakeholderCanvas, width, height, container };
   }
 
   function stakeholderSizeByExposition(value) {
@@ -5189,13 +5404,55 @@
     return [r * Math.cos(angleRad), r * Math.sin(angleRad)];
   }
 
+  function hideStakeholderTooltip() {
+    if (stakeholderTooltipEl) {
+      stakeholderTooltipEl.style.opacity = '0';
+      stakeholderTooltipEl.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  function handleStakeholderHover(evt) {
+    if (!stakeholderCanvas || !stakeholderTooltipEl) return;
+    const rect = stakeholderCanvas.getBoundingClientRect();
+    const x = evt.clientX - rect.left;
+    const y = evt.clientY - rect.top;
+    let found = null;
+    for (const point of stakeholderPoints) {
+      const dx = x - point.x;
+      const dy = y - point.y;
+      if (Math.hypot(dx, dy) <= point.hitRadius) {
+        found = point;
+        break;
+      }
+    }
+    if (!found) {
+      hideStakeholderTooltip();
+      return;
+    }
+    stakeholderTooltipEl.innerHTML = [
+      `<strong>${found.meta.nom}</strong>`,
+      `Type : ${found.meta.type}`,
+      `Zone : ${found.meta.zone && found.meta.zone.label ? found.meta.zone.label : found.meta.zone}`,
+      `Exposition : ${found.meta.exposition.toFixed(2)}`,
+      `Fiabilité : ${found.meta.fiabilite.toFixed(2)}`,
+      `Indice de menace : ${found.meta.indice.toFixed(2)}`
+    ].join('<br/>');
+    stakeholderTooltipEl.style.left = `${x}px`;
+    stakeholderTooltipEl.style.top = `${y}px`;
+    stakeholderTooltipEl.style.opacity = '1';
+    stakeholderTooltipEl.setAttribute('aria-hidden', 'false');
+  }
+
   function renderCartoRadar(ppc) {
-    const chart = ensureStakeholderChart();
+    const canvasInfo = ensureStakeholderCanvas();
     const wrapper = document.getElementById('atelier3-radar-wrapper');
-    if (!chart) {
+    if (!canvasInfo) {
       if (wrapper) wrapper.classList.toggle('empty', !(ppc && ppc.length));
       return;
     }
+
+    const { ctx, width, height } = canvasInfo;
+    hideStakeholderTooltip();
 
     const records = (ppc || []).map((item, index) => {
       const dep = parseInt(item.dependance, 10) || 1;
@@ -5243,25 +5500,14 @@
       };
     });
 
-    const points = records.map(rec => ({
-      name: rec.nom,
-      value: rec.coords,
-      symbolSize: rec.size,
-      itemStyle: {
-        color: rec.color,
-        shadowBlur: 14,
-        shadowColor: 'rgba(15, 23, 42, 0.45)',
-        opacity: 0.92
-      },
-      label: {
-        show: true,
-        formatter: rec.nom,
-        color: '#e5e7eb',
-        fontSize: 12,
-        position: rec.coords[0] >= 0 ? 'right' : 'left'
-      },
-      meta: rec
-    }));
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = '#0b1324';
+    ctx.fillRect(0, 0, width, height);
+
+    const centerX = width / 2;
+    const centerY = height / 2 + 20;
+    const baseRadius = Math.min(width, height) * 0.38;
+    const radiusScale = baseRadius / 2.5;
 
     const zoneCircles = [
       { radius: 2.5, stroke: '#38bdf8', fill: 'rgba(56,189,248,0.06)' },
@@ -5270,144 +5516,154 @@
       { radius: stakeholderRadius(3), stroke: '#ef4444', fill: 'rgba(239,68,68,0.16)' }
     ];
 
-    const option = {
-      backgroundColor: '#0f172a',
-      textStyle: {
-        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, sans-serif',
-        color: '#e5e7eb'
-      },
-      title: {
-        text: 'Cartographie des parties prenantes',
-        left: 'center',
-        textStyle: { color: '#e5e7eb', fontSize: 20 }
-      },
-      animationDuration: 400,
-      animationDurationUpdate: 400,
-      grid: { left: 40, right: 40, top: 60, bottom: 240, containLabel: true },
-      xAxis: {
-        min: -5,
-        max: 5,
-        type: 'value',
-        axisLabel: {
-          color: '#cbd5e1',
-          formatter: (value) => (5 - Math.abs(value)).toFixed(0)
-        },
-        axisLine: { lineStyle: { color: '#475569' } },
-        splitLine: { show: false },
-        axisTick: { show: false }
-      },
-      yAxis: {
-        min: -5,
-        max: 5,
-        type: 'value',
-        axisLabel: {
-          color: '#cbd5e1',
-          formatter: (value) => (5 - Math.abs(value)).toFixed(0)
-        },
-        axisLine: { lineStyle: { color: '#475569' } },
-        splitLine: { show: false },
-        axisTick: { show: false }
-      },
-      tooltip: {
-        trigger: 'item',
-        backgroundColor: '#111827',
-        borderColor: '#334155',
-        textStyle: { color: '#f1f5f9', fontSize: 12 },
-        formatter: (params) => {
-          const meta = params.data && params.data.meta;
-          if (!meta) return params.name;
-          const zoneLabel = meta.zone && meta.zone.label ? meta.zone.label : meta.zone;
-          return [
-            `<strong>${meta.nom}</strong>`,
-            `Type : ${meta.type}`,
-            `Zone : ${zoneLabel}`,
-            `Exposition : ${meta.exposition.toFixed(2)}`,
-            `Fiabilité : ${meta.fiabilite.toFixed(2)}`,
-            `Indice de menace : ${meta.indice.toFixed(2)}`
-          ].join('<br/>');
-        }
-      },
-      graphic: [
-        { type: 'group', left: '73%', top: '4%', children: [
-          { type: 'rect', shape: { width: 170, height: 34 }, style: { fill: '#11b3ad', stroke: '#0ea5a4', lineWidth: 1, rx: 17, ry: 17, shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.35)' } },
-          { type: 'text', left: 18, top: 8, style: { text: 'PARTENAIRES', fill: '#e6fffb', fontSize: 14, fontWeight: 'bold', letterSpacing: 1 } }
-        ]},
-        { type: 'group', left: '4%', top: '4%', children: [
-          { type: 'rect', shape: { width: 200, height: 34 }, style: { fill: '#11b3ad', stroke: '#0ea5a4', lineWidth: 1, rx: 17, ry: 17, shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.35)' } },
-          { type: 'text', left: 18, top: 8, style: { text: 'BÉNÉFICIAIRES', fill: '#e6fffb', fontSize: 14, fontWeight: 'bold', letterSpacing: 1 } }
-        ]},
-        { type: 'group', left: '4%', top: '78%', children: [
-          { type: 'rect', shape: { width: 200, height: 34 }, style: { fill: '#11b3ad', stroke: '#0ea5a4', lineWidth: 1, rx: 17, ry: 17, shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.35)' } },
-          { type: 'text', left: 18, top: 8, style: { text: 'PRESTATAIRES', fill: '#e6fffb', fontSize: 14, fontWeight: 'bold', letterSpacing: 1 } }
-        ]},
-        { type: 'group', left: '73%', top: '78%', children: [
-          { type: 'rect', shape: { width: 210, height: 34 }, style: { fill: '#11b3ad', stroke: '#0ea5a4', lineWidth: 1, rx: 17, ry: 17, shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.35)' } },
-          { type: 'text', left: 18, top: 8, style: { text: 'INTERNE / AUTRES', fill: '#e6fffb', fontSize: 14, fontWeight: 'bold', letterSpacing: 1 } }
-        ]},
-        { type: 'group', left: 'center', bottom: 210, children: [
-          { type: 'circle', left: -360, top: 16, shape: { cx: 0, cy: 0, r: 8 }, style: { stroke: '#38bdf8', fill: '#0f172a', lineWidth: 4 } },
-          { type: 'text', left: -340, top: 7, style: { text: 'Zone de confiance', fill: '#e5e7eb', fontSize: 13 } },
-          { type: 'circle', left: -90, top: 16, shape: { cx: 0, cy: 0, r: 8 }, style: { stroke: '#22c55e', fill: '#0f172a', lineWidth: 4 } },
-          { type: 'text', left: -70, top: 7, style: { text: 'Zone de veille', fill: '#e5e7eb', fontSize: 13 } },
-          { type: 'circle', left: 180, top: 16, shape: { cx: 0, cy: 0, r: 8 }, style: { stroke: '#f59e0b', fill: '#0f172a', lineWidth: 4 } },
-          { type: 'text', left: 200, top: 7, style: { text: 'Zone de contrôle', fill: '#e5e7eb', fontSize: 13 } },
-          { type: 'circle', left: 430, top: 16, shape: { cx: 0, cy: 0, r: 8 }, style: { stroke: '#ef4444', fill: '#0f172a', lineWidth: 4 } },
-          { type: 'text', left: 450, top: 7, style: { text: 'Zone de danger', fill: '#e5e7eb', fontSize: 13 } }
-        ]},
-        { type: 'group', left: 'center', bottom: 60, children: [
-          { type: 'rect', left: -280, top: 0, shape: { width: 250, height: 110 }, style: { fill: '#0b1220', stroke: '#94a3b8', lineWidth: 1, rx: 12, ry: 12 } },
-          { type: 'text', left: -266, top: 14, style: { text: 'EXPOSITION = Dépendance × Pénétration', fill: '#e5e7eb', fontSize: 12, fontWeight: 'bold' } },
-          { type: 'circle', left: -240, top: 58, shape: { cx: 0, cy: 0, r: 4 }, style: { fill: '#cbd5e1' } },
-          { type: 'circle', left: -208, top: 58, shape: { cx: 0, cy: 0, r: 7 }, style: { fill: '#cbd5e1' } },
-          { type: 'circle', left: -168, top: 58, shape: { cx: 0, cy: 0, r: 10 }, style: { fill: '#cbd5e1' } },
-          { type: 'circle', left: -126, top: 58, shape: { cx: 0, cy: 0, r: 13 }, style: { fill: '#cbd5e1' } },
-          { type: 'text', left: -244, top: 84, style: { text: '<3   3-6   7-9   >9', fill: '#94a3b8', fontSize: 11 } },
-          { type: 'rect', left: 20, top: 0, shape: { width: 280, height: 110 }, style: { fill: '#0b1220', stroke: '#94a3b8', lineWidth: 1, rx: 12, ry: 12 } },
-          { type: 'text', left: 34, top: 14, style: { text: 'FIABILITÉ CYBER = Maturité × Confiance', fill: '#e5e7eb', fontSize: 12, fontWeight: 'bold' } },
-          { type: 'circle', left: 42, top: 56, shape: { cx: 0, cy: 0, r: 5 }, style: { fill: '#ef4444' } },
-          { type: 'text', left: 54, top: 50, style: { text: '<4', fill: '#e5e7eb', fontSize: 12 } },
-          { type: 'circle', left: 116, top: 56, shape: { cx: 0, cy: 0, r: 5 }, style: { fill: '#f97316' } },
-          { type: 'text', left: 128, top: 50, style: { text: '4-5', fill: '#e5e7eb', fontSize: 12 } },
-          { type: 'circle', left: 188, top: 56, shape: { cx: 0, cy: 0, r: 5 }, style: { fill: '#facc15' } },
-          { type: 'text', left: 200, top: 50, style: { text: '6-7', fill: '#e5e7eb', fontSize: 12 } },
-          { type: 'circle', left: 260, top: 56, shape: { cx: 0, cy: 0, r: 5 }, style: { fill: '#22c55e' } },
-          { type: 'text', left: 272, top: 50, style: { text: '>7', fill: '#e5e7eb', fontSize: 12 } }
-        ]}
-      ],
-      series: [
-        {
-          name: 'zones',
-          type: 'custom',
-          coordinateSystem: 'cartesian2d',
-          renderItem: function(params, api) {
-            const center = api.coord([0, 0]);
-            return {
-              type: 'group',
-              children: zoneCircles.map(cfg => ({
-                type: 'circle',
-                shape: { cx: center[0], cy: center[1], r: api.size([cfg.radius, cfg.radius])[0] },
-                style: { stroke: cfg.stroke, fill: cfg.fill, lineWidth: 2 }
-              }))
-            };
-          },
-          data: [0],
-          silent: true,
-          z: 1
-        },
-        { type: 'line', data: [[-5, 0], [5, 0]], lineStyle: { color: '#475569', width: 1.2 }, symbol: 'none', silent: true, z: 2 },
-        { type: 'line', data: [[0, -5], [0, 5]], lineStyle: { color: '#475569', width: 1.2 }, symbol: 'none', silent: true, z: 2 },
-        {
-          name: 'Parties prenantes',
-          type: 'scatter',
-          data: points,
-          z: 4,
-          emphasis: { focus: 'series', scale: 1.12 }
-        }
-      ]
-    };
+    zoneCircles.forEach(cfg => {
+      ctx.beginPath();
+      ctx.fillStyle = cfg.fill;
+      ctx.strokeStyle = cfg.stroke;
+      ctx.lineWidth = 2;
+      ctx.arc(centerX, centerY, cfg.radius * radiusScale, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    });
 
-    chart.setOption(option, true);
-    chart.resize();
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(centerX - baseRadius - 20, centerY);
+    ctx.lineTo(centerX + baseRadius + 20, centerY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY - baseRadius - 20);
+    ctx.lineTo(centerX, centerY + baseRadius + 20);
+    ctx.stroke();
+
+    ctx.fillStyle = '#e5e7eb';
+    ctx.font = '20px "Segoe UI", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Cartographie des parties prenantes', centerX, 36);
+
+    function drawBadge(text, x, y, align) {
+      ctx.save();
+      ctx.font = '14px "Segoe UI", system-ui, sans-serif';
+      const paddingX = 16;
+      const paddingY = 10;
+      const metrics = ctx.measureText(text);
+      const textWidth = metrics.width;
+      const boxWidth = textWidth + paddingX * 2;
+      const boxHeight = 34;
+      let left = x;
+      if (align === 'center') {
+        left = x - boxWidth / 2;
+      } else if (align === 'right') {
+        left = x - boxWidth;
+      }
+      ctx.fillStyle = '#11b3ad';
+      ctx.strokeStyle = '#0ea5a4';
+      ctx.lineWidth = 1;
+      const radius = 16;
+      const top = y;
+      ctx.beginPath();
+      ctx.moveTo(left + radius, top);
+      ctx.lineTo(left + boxWidth - radius, top);
+      ctx.quadraticCurveTo(left + boxWidth, top, left + boxWidth, top + radius);
+      ctx.lineTo(left + boxWidth, top + boxHeight - radius);
+      ctx.quadraticCurveTo(left + boxWidth, top + boxHeight, left + boxWidth - radius, top + boxHeight);
+      ctx.lineTo(left + radius, top + boxHeight);
+      ctx.quadraticCurveTo(left, top + boxHeight, left, top + boxHeight - radius);
+      ctx.lineTo(left, top + radius);
+      ctx.quadraticCurveTo(left, top, left + radius, top);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#e6fffb';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, left + paddingX, top + boxHeight / 2);
+      ctx.restore();
+    }
+
+    drawBadge('BÉNÉFICIAIRES', centerX - baseRadius - 10, centerY - baseRadius - 70, 'left');
+    drawBadge('PARTENAIRES', centerX + baseRadius + 10, centerY - baseRadius - 70, 'right');
+    drawBadge('PRESTATAIRES', centerX - baseRadius - 10, centerY + baseRadius + 30, 'left');
+    drawBadge('INTERNE / AUTRES', centerX + baseRadius + 10, centerY + baseRadius + 30, 'right');
+
+    const zoneLegend = [
+      { color: '#38bdf8', label: 'Zone de confiance' },
+      { color: '#22c55e', label: 'Zone de veille' },
+      { color: '#f59e0b', label: 'Zone de contrôle' },
+      { color: '#ef4444', label: 'Zone de danger' }
+    ];
+    const legendSpacing = 150;
+    const legendStart = centerX - ((zoneLegend.length - 1) * legendSpacing) / 2;
+    ctx.font = '13px "Segoe UI", system-ui, sans-serif';
+    ctx.textBaseline = 'middle';
+    zoneLegend.forEach((entry, idx) => {
+      const lx = legendStart + idx * legendSpacing;
+      const ly = height - 80;
+      ctx.beginPath();
+      ctx.strokeStyle = entry.color;
+      ctx.fillStyle = '#0b1324';
+      ctx.lineWidth = 3;
+      ctx.arc(lx, ly, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#e5e7eb';
+      ctx.textAlign = 'left';
+      ctx.fillText(entry.label, lx + 16, ly);
+    });
+
+    ctx.font = '12px "Segoe UI", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillText('EXPOSITION = Dépendance × Pénétration    |    FIABILITÉ = Maturité × Confiance', centerX, height - 36);
+
+    stakeholderPoints = records.map(rec => {
+      const normX = rec.coords[0];
+      const normY = rec.coords[1];
+      const px = centerX + (normX / 2.5) * baseRadius;
+      const py = centerY - (normY / 2.5) * baseRadius;
+      const size = rec.size;
+      ctx.save();
+      ctx.beginPath();
+      ctx.fillStyle = rec.color;
+      ctx.globalAlpha = 0.92;
+      ctx.shadowBlur = 18;
+      ctx.shadowColor = 'rgba(8,15,30,0.45)';
+      ctx.arc(px, py, size / 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      ctx.strokeStyle = 'rgba(8,15,30,0.6)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(px, py, size / 2, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.fillStyle = '#e5e7eb';
+      ctx.font = '12px "Segoe UI", system-ui, sans-serif';
+      ctx.textBaseline = 'middle';
+      if (px >= centerX) {
+        ctx.textAlign = 'left';
+        ctx.fillText(rec.nom, px + size / 2 + 8, py);
+      } else {
+        ctx.textAlign = 'right';
+        ctx.fillText(rec.nom, px - size / 2 - 8, py);
+      }
+
+      return {
+        x: px,
+        y: py,
+        hitRadius: size / 2 + 10,
+        meta: rec
+      };
+    });
+
+    if (!records.length) {
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '14px "Segoe UI", system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Ajoutez des parties prenantes pour alimenter le diagramme.', centerX, centerY);
+    }
+
     if (wrapper) wrapper.classList.toggle('empty', records.length === 0);
   }
 

@@ -114,7 +114,7 @@
         <div id="atelier5-risques-tab" class="atelier5-subtab-content">
           <p>Pour chaque risque identifié dans l’atelier 4, indiquez les actions de traitement, le niveau de vraisemblance actuel et le niveau résiduel souhaité.</p>
           <div class="chart-wrapper">
-            <div id="risques-chart" class="chart-canvas" style="height:400px;"></div>
+            <canvas id="risques-chart" class="chart-canvas" style="height:400px;" aria-label="Matrice gravité vraisemblance"></canvas>
           </div>
           <div class="table-container">
             <table id="risques-actions-table" class="data-table">
@@ -193,7 +193,6 @@
     </main>
   </div>
   <div id="copyright">© Meziane KETTOUCHE</div>
-  <script src="echarts.min.js"></script>
   <script src="app.js"></script>
   <script src="gantt.js"></script>
 </body>
