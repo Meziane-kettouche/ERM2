@@ -10,7 +10,8 @@
   let analyses = [];
   let currentIndex = -1;
   let risquesChart;
-  const RADAR_MAX_RADIUS = 260;
+  let stakeholderChartInstance;
+  let stakeholderChartResizeBound = false;
 
   function loadAnalyses() {
     try {
@@ -93,13 +94,6 @@
     if (value >= 2) return { key: 'controle', label: 'Zone de contrôle', bucket: 3 };
     if (value >= 1) return { key: 'veille', label: 'Zone de veille', bucket: 2 };
     return { key: 'confiance', label: 'Zone de confiance', bucket: 1 };
-  }
-
-  function threatRadius(indice, maxR) {
-    const value = Math.max(0, Math.min(4, Number.isFinite(indice) ? indice : 0));
-    const outer = maxR * 0.88;
-    const inner = maxR * 0.28;
-    return outer - (outer - inner) * (value / 4);
   }
 
   // ----- Rendering functions
@@ -2817,10 +2811,10 @@
       }
       if (coordCell) {
         const zone = threatZoneMeta(indice);
-        const angleMap = { partenaire: 0, beneficiaire: 90, interne: 180, autres: 180, prestataire: 270 };
-        const angle = angleMap[entry.categorie] ?? 180;
+        const typeInfo = stakeholderTypeInfo(entry.categorie);
+        const angle = typeInfo.angleDeg;
         coordCell.textContent = `${zone.label} – ${angle}°`;
-        entry.rayon = threatRadius(indice, RADAR_MAX_RADIUS);
+        entry.rayon = stakeholderRadius(indice);
         entry.angle = angle;
         entry.zoneMenace = zone.key;
       }
@@ -5111,94 +5105,310 @@
     });
   } 
 
-  // Draw radar cartography for Atelier 3 using SVG
+  function ensureStakeholderChart() {
+    const container = document.getElementById('atelier3-stakeholder-chart');
+    if (!container || typeof echarts === 'undefined') return null;
+    if (stakeholderChartInstance && stakeholderChartInstance.getDom() !== container) {
+      stakeholderChartInstance.dispose();
+      stakeholderChartInstance = null;
+    }
+    if (!stakeholderChartInstance) {
+      stakeholderChartInstance = echarts.init(container);
+    }
+    if (!stakeholderChartResizeBound) {
+      stakeholderChartResizeBound = true;
+      window.addEventListener('resize', () => {
+        if (stakeholderChartInstance) {
+          stakeholderChartInstance.resize();
+        }
+      });
+    }
+    return stakeholderChartInstance;
+  }
+
+  function stakeholderSizeByExposition(value) {
+    const expo = Number.isFinite(value) ? value : 0;
+    if (expo < 3) return 8;
+    if (expo < 7) return 14;
+    if (expo < 10) return 20;
+    return 26;
+  }
+
+  function stakeholderColorByFiabilite(value) {
+    const fiab = Number.isFinite(value) ? value : 0;
+    if (fiab < 4) return '#ef4444';
+    if (fiab < 6) return '#f97316';
+    if (fiab < 8) return '#facc15';
+    return '#22c55e';
+  }
+
+  function stakeholderRadius(indice) {
+    const val = Number.isFinite(indice) ? Math.max(0, indice) : 0;
+    const clamped = Math.min(val, 5);
+    return Math.max(0.25, 2.5 - clamped * 0.6);
+  }
+
+  function stakeholderTypeInfo(categorie) {
+    const raw = (categorie || '').toString().trim().toLowerCase();
+    switch (raw) {
+      case 'partenaire':
+      case 'partenaires':
+        return { label: 'Partenaire', angleDeg: 30 };
+      case 'beneficiaire':
+      case 'bénéficiaire':
+      case 'beneficiaires':
+      case 'bénéficiaires':
+      case 'client':
+      case 'clients':
+        return { label: 'Bénéficiaire', angleDeg: 150 };
+      case 'prestataire':
+      case 'prestataires':
+      case 'fournisseur':
+      case 'fournisseurs':
+        return { label: 'Prestataire', angleDeg: 225 };
+      case 'interne':
+      case 'internes':
+      case 'autorite':
+      case 'autorité':
+      case 'autre':
+      case 'autres':
+        return { label: 'Interne / Autre', angleDeg: 315 };
+      default:
+        if (raw) {
+          return { label: categorie, angleDeg: 315 };
+        }
+        return { label: 'Interne / Autre', angleDeg: 315 };
+    }
+  }
+
+  function stakeholderPolarToXY(radius, angleDeg, jitterSeed) {
+    const angleRad = angleDeg * Math.PI / 180;
+    const j = (Math.sin((jitterSeed + 1) * 12.9898) * 43758.5453) % 1;
+    const jitter = (j - 0.5) * 0.18;
+    const r = radius + jitter;
+    return [r * Math.cos(angleRad), r * Math.sin(angleRad)];
+  }
+
   function renderCartoRadar(ppc) {
-    const svg = document.getElementById('atelier3-radar');
-    const tip = document.getElementById('atelier3-radar-tooltip');
-    if (!svg || !tip) return;
-    const pointsLayer = svg.querySelector('#radar-points');
-    if (pointsLayer) pointsLayer.innerHTML = '';
-    const center = { x: 480, y: 360 };
-    const maxR = RADAR_MAX_RADIUS;
-    const angleMap = { partenaire: 0, beneficiaire: 90, interne: 180, autres: 180, prestataire: 270 };
-
-    function posFromPolar(r, deg) {
-      const rad = (deg - 90) * Math.PI / 180;
-      return { x: center.x + r * Math.cos(rad), y: center.y + r * Math.sin(rad) };
-    }
-    function sizeForDependance(v) {
-      const val = Math.max(1, Math.min(4, v));
-      return 6 + val * 3;
+    const chart = ensureStakeholderChart();
+    const wrapper = document.getElementById('atelier3-radar-wrapper');
+    if (!chart) {
+      if (wrapper) wrapper.classList.toggle('empty', !(ppc && ppc.length));
+      return;
     }
 
-    const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-dark').trim() || '#0c1524';
-    tip.style.opacity = 0;
-    tip.innerHTML = '';
-
-    ppc.forEach(item => {
+    const records = (ppc || []).map((item, index) => {
       const dep = parseInt(item.dependance, 10) || 1;
       const pen = parseInt(item.penetration, 10) || 1;
       const mat = parseInt(item.maturite, 10) || 1;
       const conf = parseInt(item.confiance, 10) || 1;
+
       const expoCandidate = (item.exposition !== undefined && item.exposition !== null && item.exposition !== '')
         ? Number(item.exposition)
         : NaN;
       const fiabiliteCandidate = (item.fiabilite !== undefined && item.fiabilite !== null && item.fiabilite !== '')
         ? Number(item.fiabilite)
         : NaN;
-      const expo = Number.isFinite(expoCandidate) ? expoCandidate : (dep * pen);
+      const indiceCandidate = (item.indiceMenace !== undefined && item.indiceMenace !== null && item.indiceMenace !== '')
+        ? Number(item.indiceMenace)
+        : NaN;
+
+      const exposition = Number.isFinite(expoCandidate) ? expoCandidate : (dep * pen);
       const fiabilite = Number.isFinite(fiabiliteCandidate) ? fiabiliteCandidate : ((mat || 1) * (conf || 1));
-      const indiceCandidate = Number(item.indiceMenace);
-      const indice = Number.isFinite(indiceCandidate) ? indiceCandidate : (fiabilite ? expo / fiabilite : 0);
+      const indice = Number.isFinite(indiceCandidate) ? indiceCandidate : (fiabilite ? exposition / fiabilite : 0);
+
       const zone = threatZoneMeta(indice);
-      const angle = item.angle || angleMap[item.categorie] || 180;
-      const colorLvl = Math.round((mat + conf) / 2);
-      const radialDistance = threatRadius(indice, maxR);
-      const p = posFromPolar(radialDistance, angle);
-      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      g.setAttribute('class', 'radar-point');
-      g.dataset.zone = zone.key;
-      item.exposition = expo;
+      const typeInfo = stakeholderTypeInfo(item.categorie);
+      const radius = stakeholderRadius(indice);
+      const coords = stakeholderPolarToXY(radius, typeInfo.angleDeg, index + exposition + fiabilite);
+      const displayName = (item.nom && item.nom.trim()) ? item.nom.trim() : 'Partie prenante';
+
+      item.exposition = exposition;
       item.fiabilite = fiabilite;
       item.indiceMenace = indice;
-      item.angle = angle;
-      item.rayon = radialDistance;
       item.zoneMenace = zone.key;
+      item.angle = typeInfo.angleDeg;
+      item.rayon = radius;
 
-      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      c.setAttribute('cx', p.x);
-      c.setAttribute('cy', p.y);
-      c.setAttribute('r', sizeForDependance(dep));
-      c.setAttribute('fill', ssiColor(colorLvl));
-      c.setAttribute('opacity', '0.95');
-      c.setAttribute('stroke', borderColor);
-      c.setAttribute('stroke-opacity', '0.25');
-      c.setAttribute('stroke-width', '1.4');
-      c.setAttribute('filter', 'url(#softShadow)');
-
-      const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      t.setAttribute('x', p.x + 14);
-      t.setAttribute('y', p.y - 4);
-      t.setAttribute('class', 'radar-label radar-small');
-      t.textContent = item.nom || 'PP';
-
-      g.appendChild(c);
-      g.appendChild(t);
-      pointsLayer.appendChild(g);
-
-      g.addEventListener('mousemove', (evt) => {
-        const box = svg.getBoundingClientRect();
-        tip.style.left = (evt.clientX - box.left + 16) + 'px';
-        tip.style.top = (evt.clientY - box.top - 16) + 'px';
-        tip.style.opacity = 1;
-        tip.innerHTML = `<strong>${item.nom || 'PP'}</strong><br>` +
-          `Zone : ${zone.label}<br>` +
-          `Exposition : ${expo.toFixed(0)} – Fiabilité : ${fiabilite.toFixed(0)}<br>` +
-          `Indice de menace : ${indice.toFixed(2)}<br>` +
-          `Angle : ${angle}°`;
-      });
-      g.addEventListener('mouseleave', () => { tip.style.opacity = 0; });
+      return {
+        nom: displayName,
+        type: typeInfo.label,
+        coords,
+        exposition,
+        fiabilite,
+        indice,
+        zone,
+        color: stakeholderColorByFiabilite(fiabilite),
+        size: stakeholderSizeByExposition(exposition)
+      };
     });
+
+    const points = records.map(rec => ({
+      name: rec.nom,
+      value: rec.coords,
+      symbolSize: rec.size,
+      itemStyle: {
+        color: rec.color,
+        shadowBlur: 14,
+        shadowColor: 'rgba(15, 23, 42, 0.45)',
+        opacity: 0.92
+      },
+      label: {
+        show: true,
+        formatter: rec.nom,
+        color: '#e5e7eb',
+        fontSize: 12,
+        position: rec.coords[0] >= 0 ? 'right' : 'left'
+      },
+      meta: rec
+    }));
+
+    const zoneCircles = [
+      { radius: 2.5, stroke: '#38bdf8', fill: 'rgba(56,189,248,0.06)' },
+      { radius: stakeholderRadius(1), stroke: '#22c55e', fill: 'rgba(34,197,94,0.08)' },
+      { radius: stakeholderRadius(2), stroke: '#f59e0b', fill: 'rgba(245,158,11,0.12)' },
+      { radius: stakeholderRadius(3), stroke: '#ef4444', fill: 'rgba(239,68,68,0.16)' }
+    ];
+
+    const option = {
+      backgroundColor: '#0f172a',
+      textStyle: {
+        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, sans-serif',
+        color: '#e5e7eb'
+      },
+      title: {
+        text: 'Cartographie des parties prenantes',
+        left: 'center',
+        textStyle: { color: '#e5e7eb', fontSize: 20 }
+      },
+      animationDuration: 400,
+      animationDurationUpdate: 400,
+      grid: { left: 40, right: 40, top: 60, bottom: 240, containLabel: true },
+      xAxis: {
+        min: -5,
+        max: 5,
+        type: 'value',
+        axisLabel: {
+          color: '#cbd5e1',
+          formatter: (value) => (5 - Math.abs(value)).toFixed(0)
+        },
+        axisLine: { lineStyle: { color: '#475569' } },
+        splitLine: { show: false },
+        axisTick: { show: false }
+      },
+      yAxis: {
+        min: -5,
+        max: 5,
+        type: 'value',
+        axisLabel: {
+          color: '#cbd5e1',
+          formatter: (value) => (5 - Math.abs(value)).toFixed(0)
+        },
+        axisLine: { lineStyle: { color: '#475569' } },
+        splitLine: { show: false },
+        axisTick: { show: false }
+      },
+      tooltip: {
+        trigger: 'item',
+        backgroundColor: '#111827',
+        borderColor: '#334155',
+        textStyle: { color: '#f1f5f9', fontSize: 12 },
+        formatter: (params) => {
+          const meta = params.data && params.data.meta;
+          if (!meta) return params.name;
+          const zoneLabel = meta.zone && meta.zone.label ? meta.zone.label : meta.zone;
+          return [
+            `<strong>${meta.nom}</strong>`,
+            `Type : ${meta.type}`,
+            `Zone : ${zoneLabel}`,
+            `Exposition : ${meta.exposition.toFixed(2)}`,
+            `Fiabilité : ${meta.fiabilite.toFixed(2)}`,
+            `Indice de menace : ${meta.indice.toFixed(2)}`
+          ].join('<br/>');
+        }
+      },
+      graphic: [
+        { type: 'group', left: '73%', top: '4%', children: [
+          { type: 'rect', shape: { width: 170, height: 34 }, style: { fill: '#11b3ad', stroke: '#0ea5a4', lineWidth: 1, rx: 17, ry: 17, shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.35)' } },
+          { type: 'text', left: 18, top: 8, style: { text: 'PARTENAIRES', fill: '#e6fffb', fontSize: 14, fontWeight: 'bold', letterSpacing: 1 } }
+        ]},
+        { type: 'group', left: '4%', top: '4%', children: [
+          { type: 'rect', shape: { width: 200, height: 34 }, style: { fill: '#11b3ad', stroke: '#0ea5a4', lineWidth: 1, rx: 17, ry: 17, shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.35)' } },
+          { type: 'text', left: 18, top: 8, style: { text: 'BÉNÉFICIAIRES', fill: '#e6fffb', fontSize: 14, fontWeight: 'bold', letterSpacing: 1 } }
+        ]},
+        { type: 'group', left: '4%', top: '78%', children: [
+          { type: 'rect', shape: { width: 200, height: 34 }, style: { fill: '#11b3ad', stroke: '#0ea5a4', lineWidth: 1, rx: 17, ry: 17, shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.35)' } },
+          { type: 'text', left: 18, top: 8, style: { text: 'PRESTATAIRES', fill: '#e6fffb', fontSize: 14, fontWeight: 'bold', letterSpacing: 1 } }
+        ]},
+        { type: 'group', left: '73%', top: '78%', children: [
+          { type: 'rect', shape: { width: 210, height: 34 }, style: { fill: '#11b3ad', stroke: '#0ea5a4', lineWidth: 1, rx: 17, ry: 17, shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.35)' } },
+          { type: 'text', left: 18, top: 8, style: { text: 'INTERNE / AUTRES', fill: '#e6fffb', fontSize: 14, fontWeight: 'bold', letterSpacing: 1 } }
+        ]},
+        { type: 'group', left: 'center', bottom: 210, children: [
+          { type: 'circle', left: -360, top: 16, shape: { cx: 0, cy: 0, r: 8 }, style: { stroke: '#38bdf8', fill: '#0f172a', lineWidth: 4 } },
+          { type: 'text', left: -340, top: 7, style: { text: 'Zone de confiance', fill: '#e5e7eb', fontSize: 13 } },
+          { type: 'circle', left: -90, top: 16, shape: { cx: 0, cy: 0, r: 8 }, style: { stroke: '#22c55e', fill: '#0f172a', lineWidth: 4 } },
+          { type: 'text', left: -70, top: 7, style: { text: 'Zone de veille', fill: '#e5e7eb', fontSize: 13 } },
+          { type: 'circle', left: 180, top: 16, shape: { cx: 0, cy: 0, r: 8 }, style: { stroke: '#f59e0b', fill: '#0f172a', lineWidth: 4 } },
+          { type: 'text', left: 200, top: 7, style: { text: 'Zone de contrôle', fill: '#e5e7eb', fontSize: 13 } },
+          { type: 'circle', left: 430, top: 16, shape: { cx: 0, cy: 0, r: 8 }, style: { stroke: '#ef4444', fill: '#0f172a', lineWidth: 4 } },
+          { type: 'text', left: 450, top: 7, style: { text: 'Zone de danger', fill: '#e5e7eb', fontSize: 13 } }
+        ]},
+        { type: 'group', left: 'center', bottom: 60, children: [
+          { type: 'rect', left: -280, top: 0, shape: { width: 250, height: 110 }, style: { fill: '#0b1220', stroke: '#94a3b8', lineWidth: 1, rx: 12, ry: 12 } },
+          { type: 'text', left: -266, top: 14, style: { text: 'EXPOSITION = Dépendance × Pénétration', fill: '#e5e7eb', fontSize: 12, fontWeight: 'bold' } },
+          { type: 'circle', left: -240, top: 58, shape: { cx: 0, cy: 0, r: 4 }, style: { fill: '#cbd5e1' } },
+          { type: 'circle', left: -208, top: 58, shape: { cx: 0, cy: 0, r: 7 }, style: { fill: '#cbd5e1' } },
+          { type: 'circle', left: -168, top: 58, shape: { cx: 0, cy: 0, r: 10 }, style: { fill: '#cbd5e1' } },
+          { type: 'circle', left: -126, top: 58, shape: { cx: 0, cy: 0, r: 13 }, style: { fill: '#cbd5e1' } },
+          { type: 'text', left: -244, top: 84, style: { text: '<3   3-6   7-9   >9', fill: '#94a3b8', fontSize: 11 } },
+          { type: 'rect', left: 20, top: 0, shape: { width: 280, height: 110 }, style: { fill: '#0b1220', stroke: '#94a3b8', lineWidth: 1, rx: 12, ry: 12 } },
+          { type: 'text', left: 34, top: 14, style: { text: 'FIABILITÉ CYBER = Maturité × Confiance', fill: '#e5e7eb', fontSize: 12, fontWeight: 'bold' } },
+          { type: 'circle', left: 42, top: 56, shape: { cx: 0, cy: 0, r: 5 }, style: { fill: '#ef4444' } },
+          { type: 'text', left: 54, top: 50, style: { text: '<4', fill: '#e5e7eb', fontSize: 12 } },
+          { type: 'circle', left: 116, top: 56, shape: { cx: 0, cy: 0, r: 5 }, style: { fill: '#f97316' } },
+          { type: 'text', left: 128, top: 50, style: { text: '4-5', fill: '#e5e7eb', fontSize: 12 } },
+          { type: 'circle', left: 188, top: 56, shape: { cx: 0, cy: 0, r: 5 }, style: { fill: '#facc15' } },
+          { type: 'text', left: 200, top: 50, style: { text: '6-7', fill: '#e5e7eb', fontSize: 12 } },
+          { type: 'circle', left: 260, top: 56, shape: { cx: 0, cy: 0, r: 5 }, style: { fill: '#22c55e' } },
+          { type: 'text', left: 272, top: 50, style: { text: '>7', fill: '#e5e7eb', fontSize: 12 } }
+        ]}
+      ],
+      series: [
+        {
+          name: 'zones',
+          type: 'custom',
+          coordinateSystem: 'cartesian2d',
+          renderItem: function(params, api) {
+            const center = api.coord([0, 0]);
+            return {
+              type: 'group',
+              children: zoneCircles.map(cfg => ({
+                type: 'circle',
+                shape: { cx: center[0], cy: center[1], r: api.size([cfg.radius, cfg.radius])[0] },
+                style: { stroke: cfg.stroke, fill: cfg.fill, lineWidth: 2 }
+              }))
+            };
+          },
+          data: [0],
+          silent: true,
+          z: 1
+        },
+        { type: 'line', data: [[-5, 0], [5, 0]], lineStyle: { color: '#475569', width: 1.2 }, symbol: 'none', silent: true, z: 2 },
+        { type: 'line', data: [[0, -5], [0, 5]], lineStyle: { color: '#475569', width: 1.2 }, symbol: 'none', silent: true, z: 2 },
+        {
+          name: 'Parties prenantes',
+          type: 'scatter',
+          data: points,
+          z: 4,
+          emphasis: { focus: 'series', scale: 1.12 }
+        }
+      ]
+    };
+
+    chart.setOption(option, true);
+    chart.resize();
+    if (wrapper) wrapper.classList.toggle('empty', records.length === 0);
   }
 
   function renderStrategicGraph() {
