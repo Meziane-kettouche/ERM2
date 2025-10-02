@@ -5961,12 +5961,34 @@
     }
 
     const analysis = analyses[currentIndex];
-    const risques = (analysis && analysis.data && Array.isArray(analysis.data.risques)) ? analysis.data.risques : [];
-    const data = risques.map(risk => {
+    const risquesList = [];
+    if (analysis && analysis.data) {
+      if (Array.isArray(analysis.data.risques)) {
+        risquesList.push(...analysis.data.risques);
+      }
+      if (Array.isArray(analysis.data.so)) {
+        analysis.data.so.forEach(scenario => {
+          if (!scenario || !Array.isArray(scenario.risks)) return;
+          scenario.risks.forEach(risk => {
+            if (!risk) return;
+            risquesList.push({
+              // Preserve name so the identifier can be derived for the chart label
+              name: risk.name,
+              gravite: risk.gravite,
+              vraisemblance: risk.vraisemblance,
+              description: risk.description
+            });
+          });
+        });
+      }
+    }
+
+    const data = risquesList.map(risk => {
       const gravite = parseLevel(risk.gravite, null);
       const vraisemblance = parseLevel(risk.vraisemblance, null);
       if (gravite === null || vraisemblance === null) return null;
-      const label = risk.libelle || risk.titre || formatRiskIdentifier(risk.indice || risk.id || '') || 'Risque';
+      const idPart = formatRiskIdentifier(risk.indice || risk.id || risk.name || '');
+      const label = risk.libelle || risk.titre || idPart || risk.name || 'Risque';
       return {
         name: label,
         value: [gravite, vraisemblance],
