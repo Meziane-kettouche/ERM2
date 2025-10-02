@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EBIOS Risk Manager – Atelier 5</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js" defer></script>
 </head>
 <body>
   <div id="app">
@@ -114,7 +115,7 @@
         <div id="atelier5-risques-tab" class="atelier5-subtab-content">
           <p>Pour chaque risque identifié dans l’atelier 4, indiquez les actions de traitement, le niveau de vraisemblance actuel et le niveau résiduel souhaité.</p>
           <div class="chart-wrapper">
-            <canvas id="risques-chart" class="chart-canvas" style="height:400px;" aria-label="Matrice gravité vraisemblance"></canvas>
+            <div id="risques-chart" class="chart-canvas chart-surface" role="img" aria-label="Matrice gravité vraisemblance"></div>
           </div>
           <div class="table-container">
             <table id="risques-actions-table" class="data-table">

@@ -328,6 +328,10 @@ input[type="text"]:focus, input[type="number"]:focus, textarea:focus {
   padding: 0;
 }
 
+.chart-surface {
+  height: 400px;
+}
+
 /* Data tables for values and events */
 .data-table {
   width: 100%;
