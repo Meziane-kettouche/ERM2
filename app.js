@@ -15,11 +15,19 @@
   let stakeholderPoints = [];
   let stakeholderTooltipEl;
 
-  let risquesCanvas;
-  let risquesCtx;
-  let risquesChartResizeBound = false;
-  let risquesPoints = [];
-  let risquesTooltipEl;
+  let atelier4ChartInstance;
+  let risquesChartInstance;
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', () => {
+      if (atelier4ChartInstance) {
+        atelier4ChartInstance.resize();
+      }
+      if (risquesChartInstance) {
+        risquesChartInstance.resize();
+      }
+    });
+  }
 
   function loadAnalyses() {
     try {
@@ -248,6 +256,67 @@
     const dashIndex = str.search(/[-–—]/);
     if (dashIndex === -1) return str;
     return str.slice(0, dashIndex).trim();
+  }
+
+  function getCssVar(name, fallback) {
+    const styles = getComputedStyle(document.documentElement);
+    const value = styles.getPropertyValue(name);
+    return value && value.trim() ? value.trim() : fallback;
+  }
+
+  function parseLevel(value, fallback) {
+    const num = parseFloat(value);
+    if (!Number.isFinite(num)) return fallback;
+    return Math.max(0, Math.min(4, num));
+  }
+
+  function spreadInSquare(points, radius = 0.12) {
+    const normalized = [];
+    points.forEach(point => {
+      if (!point || !Array.isArray(point.value) || point.value.length < 2) return;
+      const x = parseFloat(point.value[0]);
+      const y = parseFloat(point.value[1]);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      normalized.push({
+        ...point,
+        value: [Math.max(0, Math.min(4, x)), Math.max(0, Math.min(4, y))]
+      });
+    });
+
+    const groups = new Map();
+    normalized.forEach(point => {
+      const key = `${Math.round(point.value[0] * 1000) / 1000}|${Math.round(point.value[1] * 1000) / 1000}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(point);
+    });
+
+    const result = [];
+    groups.forEach(group => {
+      if (group.length === 1) {
+        const p = group[0];
+        result.push({ ...p, value: [Number(p.value[0].toFixed(3)), Number(p.value[1].toFixed(3))] });
+        return;
+      }
+      const baseX = group[0].value[0];
+      const baseY = group[0].value[1];
+      const cellBaseX = Math.min(Math.max(Math.floor(Math.min(baseX, 3)), 0), 3);
+      const cellBaseY = Math.min(Math.max(Math.floor(Math.min(baseY, 3)), 0), 3);
+      const minX = cellBaseX;
+      const maxX = cellBaseX + 1;
+      const minY = cellBaseY;
+      const maxY = cellBaseY + 1;
+      group.forEach((point, idx) => {
+        const angle = (2 * Math.PI * idx) / group.length;
+        let nx = baseX + radius * Math.cos(angle);
+        let ny = baseY + radius * Math.sin(angle);
+        nx = Math.max(minX + 0.05, Math.min(maxX - 0.05, nx));
+        ny = Math.max(minY + 0.05, Math.min(maxY - 0.05, ny));
+        nx = Math.max(0, Math.min(4, nx));
+        ny = Math.max(0, Math.min(4, ny));
+        result.push({ ...point, value: [Number(nx.toFixed(3)), Number(ny.toFixed(3))] });
+      });
+    });
+    return result;
   }
 
   // ----- Atelier 1: Mission description
@@ -4198,285 +4267,285 @@
   }
 
   // Render actions for risks: show each risk and allow adding actions and residual levels
-  function ensureRisquesCanvas() {
-    const canvas = document.getElementById('risques-chart');
-    if (!canvas) return null;
-    if (risquesCanvas !== canvas) {
-      risquesCanvas = canvas;
-      risquesCtx = canvas.getContext('2d');
-      risquesPoints = [];
-      if (risquesTooltipEl) {
-        risquesTooltipEl.remove();
-        risquesTooltipEl = null;
-      }
-      delete canvas.dataset.eventsBound;
-    }
-    if (!risquesCtx) return null;
-
-    const container = canvas.parentElement || canvas;
-    if (!risquesTooltipEl) {
-      risquesTooltipEl = document.createElement('div');
-      risquesTooltipEl.className = 'risques-tooltip';
-      risquesTooltipEl.setAttribute('aria-hidden', 'true');
-      risquesTooltipEl.style.opacity = '0';
-      container.appendChild(risquesTooltipEl);
-    }
-    if (!canvas.dataset.eventsBound) {
-      canvas.addEventListener('mousemove', handleRisquesHover);
-      canvas.addEventListener('mouseleave', hideRisquesTooltip);
-      canvas.dataset.eventsBound = 'true';
-    }
-
-    const ratio = window.devicePixelRatio || 1;
-    const width = container.clientWidth || canvas.clientWidth || 640;
-    const height = canvas.clientHeight || 400;
-    const targetWidth = Math.round(width * ratio);
-    const targetHeight = Math.round(height * ratio);
-    if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
-      canvas.width = targetWidth;
-      canvas.height = targetHeight;
-    }
-    canvas.style.width = width + 'px';
-    canvas.style.height = height + 'px';
-    risquesCtx.setTransform(1, 0, 0, 1, 0, 0);
-    risquesCtx.scale(ratio, ratio);
-
-    if (!risquesChartResizeBound) {
-      risquesChartResizeBound = true;
-      window.addEventListener('resize', () => {
-        requestAnimationFrame(() => renderRisquesChart());
-      });
-    }
-
-    return { canvas, ctx: risquesCtx, width, height };
-  }
-
-  function hideRisquesTooltip() {
-    if (risquesTooltipEl) {
-      risquesTooltipEl.style.opacity = '0';
-      risquesTooltipEl.setAttribute('aria-hidden', 'true');
-    }
-  }
-
-  function handleRisquesHover(evt) {
-    if (!risquesCanvas || !risquesTooltipEl) return;
-    const rect = risquesCanvas.getBoundingClientRect();
-    const x = evt.clientX - rect.left;
-    const y = evt.clientY - rect.top;
-    let found = null;
-    for (const point of risquesPoints) {
-      const dx = x - point.x;
-      const dy = y - point.y;
-      if (Math.hypot(dx, dy) <= point.radius) {
-        found = point;
-        break;
-      }
-    }
-    if (!found) {
-      hideRisquesTooltip();
-      return;
-    }
-    risquesTooltipEl.innerHTML = [
-      `<strong>${found.label}</strong>`,
-      found.description ? found.description : '',
-      `Gravité : ${found.gravite}`,
-      `Vraisemblance : ${found.vraisemblance}`,
-      `Type : ${found.type}`
-    ].filter(Boolean).join('<br/>');
-    risquesTooltipEl.style.left = `${x}px`;
-    risquesTooltipEl.style.top = `${y}px`;
-    risquesTooltipEl.style.opacity = '1';
-    risquesTooltipEl.setAttribute('aria-hidden', 'false');
-  }
-
   function renderRisquesChart() {
-    const canvasInfo = ensureRisquesCanvas();
-    if (!canvasInfo) return;
-    const analysis = analyses[currentIndex];
-    const { ctx, width, height } = canvasInfo;
-    hideRisquesTooltip();
-    risquesPoints = [];
-    ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(0, 0, width, height);
-
-    if (!analysis || !analysis.data) {
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '14px "Segoe UI", system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('Ajoutez des risques et des actions pour visualiser la matrice.', width / 2, height / 2);
+    const container = document.getElementById('risques-chart');
+    if (!container) {
+      if (risquesChartInstance) {
+        risquesChartInstance.dispose();
+        risquesChartInstance = null;
+      }
       return;
     }
+    if (typeof echarts === 'undefined') return;
+
+    if (risquesChartInstance && risquesChartInstance.getDom() !== container) {
+      risquesChartInstance.dispose();
+      risquesChartInstance = null;
+    }
+    if (!risquesChartInstance) {
+      risquesChartInstance = echarts.init(container);
+    }
+
+    const analysis = analyses[currentIndex];
     const riskMap = new Map();
-    (analysis.data.risques || []).forEach(riskObj => {
-      const label = riskObj.libelle || riskObj.titre || riskObj.indice || riskObj.id || '';
-      if (!label) return;
-      const id = riskObj.id || label;
-      const cur = riskMap.get(id) || { id, name: label, vraisemblance: parseInt(riskObj.vraisemblance, 10) || 1, gravite: parseInt(riskObj.gravite, 10) || 1 };
-      cur.vraisemblance = Math.max(cur.vraisemblance, parseInt(riskObj.vraisemblance, 10) || 1);
-      cur.gravite = Math.max(cur.gravite, parseInt(riskObj.gravite, 10) || 1);
-      riskMap.set(id, cur);
-    });
-    (analysis.data.so || []).forEach(so => {
-      (so.risks || []).forEach(rk => {
-        const label = rk.name || rk.id;
+    if (analysis && analysis.data) {
+      (analysis.data.risques || []).forEach(riskObj => {
+        const label = riskObj.libelle || riskObj.titre || riskObj.indice || riskObj.id || '';
         if (!label) return;
-        const id = rk.id || rk.name;
-        const cur = riskMap.get(id) || { id, name: label, vraisemblance: parseInt(rk.vraisemblance, 10) || 1, gravite: parseInt(rk.gravite, 10) || 1 };
-        cur.vraisemblance = Math.max(cur.vraisemblance, parseInt(rk.vraisemblance, 10) || 1);
-        cur.gravite = Math.max(cur.gravite, parseInt(rk.gravite, 10) || 1);
-        riskMap.set(id, cur);
+        const id = riskObj.id || label;
+        const current = riskMap.get(id) || {
+          id,
+          name: label,
+          vraisemblance: parseLevel(riskObj.vraisemblance, 1),
+          gravite: parseLevel(riskObj.gravite, 1)
+        };
+        current.vraisemblance = Math.max(current.vraisemblance, parseLevel(riskObj.vraisemblance, 1));
+        current.gravite = Math.max(current.gravite, parseLevel(riskObj.gravite, 1));
+        riskMap.set(id, current);
       });
-    });
-    const initData = [];
-    const residData = [];
-    const arrowData = [];
-    (analysis.data.actionsRisques || []).forEach(row => {
-      if (!row.riskId && row.riskName) {
-        for (const [id, obj] of riskMap.entries()) {
-          if (obj.name === row.riskName) { row.riskId = id; break; }
-        }
-        if (!row.riskId) row.riskId = row.riskName ? row.riskName.split(' ')[0] : '';
-      }
-      const risk = riskMap.get(row.riskId) || { id: row.riskId, name: row.riskName, vraisemblance: row.residualV || 1, gravite: row.residualG || 1 };
-      const initial = [risk.gravite, risk.vraisemblance];
-      const residual = [row.residualG || risk.gravite, row.residualV || risk.vraisemblance];
-      const displayId = formatRiskIdentifier(row.riskId || '');
-      const label = displayId || row.riskName || risk.name;
-      initData.push({ value: initial, name: label, description: row.riskName || risk.name });
-      residData.push({ value: residual, name: label, description: row.riskName || risk.name });
-      arrowData.push({ from: initial, to: residual, label, description: row.riskName || risk.name });
-    });
-    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#22c55e';
-    const danger = getComputedStyle(document.documentElement).getPropertyValue('--danger').trim() || '#ef4444';
-    const secondary = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#cbd5e1';
-
-    const margin = { top: 50, right: 40, bottom: 60, left: 70 };
-    const plotWidth = width - margin.left - margin.right;
-    const plotHeight = height - margin.top - margin.bottom;
-
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(margin.left, margin.top, plotWidth, plotHeight);
-    ctx.strokeStyle = 'rgba(148,163,184,0.25)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 4; i++) {
-      const x = margin.left + (plotWidth / 4) * i;
-      ctx.beginPath();
-      ctx.moveTo(x, margin.top);
-      ctx.lineTo(x, margin.top + plotHeight);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(margin.left, margin.top + plotHeight - (plotHeight / 4) * i);
-      ctx.lineTo(margin.left + plotWidth, margin.top + plotHeight - (plotHeight / 4) * i);
-      ctx.stroke();
-    }
-
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(margin.left, margin.top, plotWidth, plotHeight);
-
-    ctx.fillStyle = '#e5e7eb';
-    ctx.font = '20px "Segoe UI", system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Matrice Gravité / Vraisemblance', width / 2, 28);
-
-    ctx.font = '13px "Segoe UI", system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    for (let i = 0; i <= 4; i++) {
-      const x = margin.left + (plotWidth / 4) * i;
-      ctx.fillText(i.toString(), x, margin.top + plotHeight + 24);
-    }
-    ctx.save();
-    ctx.translate(margin.left - 28, margin.top + plotHeight / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillText('Vraisemblance', 0, 0);
-    ctx.restore();
-    ctx.fillText('Gravité', margin.left + plotWidth / 2, margin.top + plotHeight + 45);
-
-    ctx.textAlign = 'left';
-    const legendItems = [
-      { color: accent, label: 'Position initiale' },
-      { color: danger, label: 'Position résiduelle' },
-      { color: secondary, label: 'Action (trajet)' }
-    ];
-    legendItems.forEach((item, idx) => {
-      const lx = margin.left + idx * 180;
-      const ly = height - 24;
-      ctx.fillStyle = item.color;
-      ctx.fillRect(lx, ly - 8, 18, 18);
-      ctx.fillStyle = '#e5e7eb';
-      ctx.fillText(item.label, lx + 26, ly + 1);
-    });
-
-    const toCanvasCoords = ([grav, vraisem]) => {
-      const x = margin.left + (grav / 4) * plotWidth;
-      const y = margin.top + plotHeight - (vraisem / 4) * plotHeight;
-      return { x, y };
-    };
-
-    arrowData.forEach(entry => {
-      const from = toCanvasCoords(entry.from);
-      const to = toCanvasCoords(entry.to);
-      ctx.strokeStyle = secondary;
-      ctx.setLineDash([6, 4]);
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(from.x, from.y);
-      ctx.lineTo(to.x, to.y);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      const angle = Math.atan2(to.y - from.y, to.x - from.x);
-      const size = 10;
-      ctx.fillStyle = secondary;
-      ctx.beginPath();
-      ctx.moveTo(to.x, to.y);
-      ctx.lineTo(to.x - size * Math.cos(angle - Math.PI / 6), to.y - size * Math.sin(angle - Math.PI / 6));
-      ctx.lineTo(to.x - size * Math.cos(angle + Math.PI / 6), to.y - size * Math.sin(angle + Math.PI / 6));
-      ctx.closePath();
-      ctx.fill();
-    });
-
-    function drawPoints(dataset, color, type, radius, position) {
-      ctx.fillStyle = color;
-      ctx.strokeStyle = '#0f172a';
-      ctx.lineWidth = 2;
-      dataset.forEach(point => {
-        const { x, y } = toCanvasCoords(point.value);
-        ctx.beginPath();
-        ctx.arc(x, y, radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = '#e5e7eb';
-        ctx.font = '12px "Segoe UI", system-ui, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        const labelOffset = position === 'bottom' ? radius + 12 : -(radius + 12);
-        ctx.fillText(point.name, x, y + labelOffset);
-        ctx.fillStyle = color;
-        risquesPoints.push({
-          x,
-          y,
-          radius: radius + 6,
-          label: point.name,
-          description: point.description,
-          gravite: point.value[0],
-          vraisemblance: point.value[1],
-          type
+      (analysis.data.so || []).forEach(so => {
+        (so.risks || []).forEach(rk => {
+          const label = rk.name || rk.id;
+          if (!label) return;
+          const id = rk.id || rk.name;
+          const current = riskMap.get(id) || {
+            id,
+            name: label,
+            vraisemblance: parseLevel(rk.vraisemblance, 1),
+            gravite: parseLevel(rk.gravite, 1)
+          };
+          current.vraisemblance = Math.max(current.vraisemblance, parseLevel(rk.vraisemblance, 1));
+          current.gravite = Math.max(current.gravite, parseLevel(rk.gravite, 1));
+          riskMap.set(id, current);
         });
       });
     }
 
-    const initialRadius = Math.max(7, Math.min(14, plotWidth / 30));
-    const residualRadius = Math.max(6, Math.min(12, plotWidth / 36));
-    drawPoints(initData, accent, 'Initial', initialRadius, 'top');
-    drawPoints(residData, danger, 'Résiduel', residualRadius, 'bottom');
-
-    if (!initData.length && !residData.length) {
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '14px "Segoe UI", system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('Aucune action de traitement de risque enregistrée.', width / 2, margin.top + plotHeight / 2);
+    const basePoints = [];
+    if (analysis && analysis.data) {
+      (analysis.data.actionsRisques || []).forEach(row => {
+        if (!row) return;
+        if (!row.riskId && row.riskName) {
+          for (const [id, obj] of riskMap.entries()) {
+            if (obj.name === row.riskName) {
+              row.riskId = id;
+              break;
+            }
+          }
+          if (!row.riskId) row.riskId = row.riskName ? row.riskName.split(' ')[0] : '';
+        }
+        const risk = riskMap.get(row.riskId) || {
+          id: row.riskId,
+          name: row.riskName || row.riskId || 'Risque',
+          vraisemblance: parseLevel(row.residualV, 1),
+          gravite: parseLevel(row.residualG, 1)
+        };
+        const initial = [
+          parseLevel(risk.gravite, 1),
+          parseLevel(risk.vraisemblance, 1)
+        ];
+        const residual = [
+          parseLevel(row.residualG, initial[0]),
+          parseLevel(row.residualV, initial[1])
+        ];
+        const displayId = formatRiskIdentifier(row.riskId || '');
+        const label = displayId || row.riskName || risk.name || 'Risque';
+        const description = row.riskName || risk.name || '';
+        basePoints.push({ name: label, description, initial, residual });
+      });
     }
+
+    const accent = getCssVar('--accent', '#4da3ff');
+    const danger = getCssVar('--danger', '#e74c3c');
+    const textPrimary = getCssVar('--text-primary', '#e6e9ef');
+    const textSecondary = getCssVar('--text-secondary', '#8aa0c4');
+
+    if (!basePoints.length) {
+      risquesChartInstance.setOption({
+        backgroundColor: 'transparent',
+        title: {
+          text: 'Traitement des risques (Actuel → Résiduel)',
+          left: 'center',
+          textStyle: { color: textPrimary, fontSize: 18, fontWeight: 'bold' }
+        },
+        grid: { left: 60, right: 30, top: 80, bottom: 60 },
+        xAxis: {
+          type: 'value',
+          min: 0,
+          max: 4,
+          splitNumber: 4,
+          axisLine: { lineStyle: { color: textSecondary } },
+          axisLabel: { color: textSecondary },
+          splitLine: { lineStyle: { color: 'rgba(148,163,184,0.2)' } },
+          name: 'Gravité',
+          nameGap: 30,
+          nameTextStyle: { color: textSecondary }
+        },
+        yAxis: {
+          type: 'value',
+          min: 0,
+          max: 4,
+          splitNumber: 4,
+          axisLine: { lineStyle: { color: textSecondary } },
+          axisLabel: { color: textSecondary },
+          splitLine: { lineStyle: { color: 'rgba(148,163,184,0.2)' } },
+          name: 'Vraisemblance',
+          nameGap: 40,
+          nameTextStyle: { color: textSecondary }
+        },
+        legend: {
+          data: ['Actuel', 'Résiduel', 'Traitement'],
+          top: 40,
+          textStyle: { color: textSecondary }
+        },
+        series: [],
+        graphic: [
+          {
+            type: 'text',
+            left: 'center',
+            top: 'middle',
+            style: {
+              text: 'Aucune action de traitement de risque enregistrée.',
+              fill: textSecondary,
+              fontSize: 14
+            }
+          }
+        ]
+      }, true);
+      return;
+    }
+
+    const initialPoints = basePoints.map(point => ({
+      name: point.name,
+      value: point.initial,
+      description: point.description,
+      type: 'Actuel'
+    }));
+    const residualPoints = basePoints.map(point => ({
+      name: point.name,
+      value: point.residual,
+      description: point.description,
+      type: 'Résiduel'
+    }));
+
+    const initialSpread = spreadInSquare(initialPoints, 0.14);
+    const residualSpread = spreadInSquare(residualPoints, 0.14);
+
+    const initialPositions = new Map(initialSpread.map(item => [item.name, item.value]));
+    const residualPositions = new Map(residualSpread.map(item => [item.name, item.value]));
+
+    const lineData = basePoints.map(point => ({
+      name: point.name,
+      description: point.description,
+      from: point.initial,
+      to: point.residual,
+      coords: [
+        initialPositions.get(point.name) || point.initial,
+        residualPositions.get(point.name) || point.residual
+      ]
+    }));
+
+    const option = {
+      backgroundColor: 'transparent',
+      title: {
+        text: 'Traitement des risques (Actuel → Résiduel)',
+        left: 'center',
+        textStyle: { color: textPrimary, fontSize: 18, fontWeight: 'bold' }
+      },
+      legend: {
+        data: ['Actuel', 'Résiduel', 'Traitement'],
+        top: 40,
+        textStyle: { color: textSecondary }
+      },
+      grid: { left: 60, right: 30, top: 80, bottom: 60 },
+      tooltip: {
+        trigger: 'item',
+        borderWidth: 1,
+        backgroundColor: '#0f172a',
+        borderColor: accent,
+        textStyle: { color: textPrimary },
+        formatter: (params) => {
+          if (params.seriesType === 'lines') {
+            const data = params.data || {};
+            const from = data.from || (data.coords ? data.coords[0] : []);
+            const to = data.to || (data.coords ? data.coords[1] : []);
+            const desc = data.description ? `<br/><em>${data.description}</em>` : '';
+            return `<strong>${data.name}</strong>${desc}<br/>Actuel : G ${from[0]} / V ${from[1]}<br/>Résiduel : G ${to[0]} / V ${to[1]}`;
+          }
+          const desc = params.data && params.data.description ? `<br/><em>${params.data.description}</em>` : '';
+          return `<strong>${params.name}</strong>${desc}<br/>${params.seriesName} – Gravité : ${params.value[0]}<br/>${params.seriesName} – Vraisemblance : ${params.value[1]}`;
+        }
+      },
+      xAxis: {
+        type: 'value',
+        min: 0,
+        max: 4,
+        splitNumber: 4,
+        name: 'Gravité',
+        nameGap: 30,
+        nameTextStyle: { color: textSecondary },
+        axisLine: { lineStyle: { color: textSecondary } },
+        axisLabel: { color: textSecondary },
+        splitLine: { lineStyle: { color: 'rgba(148,163,184,0.2)' } }
+      },
+      yAxis: {
+        type: 'value',
+        min: 0,
+        max: 4,
+        splitNumber: 4,
+        name: 'Vraisemblance',
+        nameGap: 40,
+        nameTextStyle: { color: textSecondary },
+        axisLine: { lineStyle: { color: textSecondary } },
+        axisLabel: { color: textSecondary },
+        splitLine: { lineStyle: { color: 'rgba(148,163,184,0.2)' } }
+      },
+      series: [
+        {
+          name: 'Traitement',
+          type: 'lines',
+          coordinateSystem: 'cartesian2d',
+          data: lineData,
+          lineStyle: { color: textSecondary, width: 2, type: 'dotted' },
+          effect: { show: true, symbol: 'arrow', symbolSize: 9, color: textSecondary, trailLength: 0 },
+          z: 1
+        },
+        {
+          name: 'Actuel',
+          type: 'scatter',
+          data: initialSpread,
+          symbolSize: 20,
+          itemStyle: { color: accent },
+          label: {
+            show: true,
+            formatter: '{b}',
+            position: 'top',
+            color: textPrimary,
+            fontSize: 12
+          },
+          z: 2
+        },
+        {
+          name: 'Résiduel',
+          type: 'scatter',
+          data: residualSpread,
+          symbolSize: 16,
+          itemStyle: { color: danger },
+          label: {
+            show: true,
+            formatter: '{b}',
+            position: 'bottom',
+            color: textPrimary,
+            fontSize: 12
+          },
+          z: 3
+        }
+      ],
+      animationDuration: 300,
+      graphic: []
+    };
+
+    risquesChartInstance.setOption(option, true);
   }
 
   // Render actions for risks: show each risk and allow adding actions and residual levels
@@ -5019,78 +5088,6 @@
       ctx.lineWidth = 2;
       ctx.stroke();
     }
-  }
-
-  function drawRiskMatrix(canvas, risks) {
-    const ctx = canvas.getContext('2d');
-    const width = canvas.width;
-    const height = canvas.height;
-    // Fill dark background
-    const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg-panel') || '#0c1524';
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, width, height);
-    const cellW = width / 4;
-    const cellH = height / 4;
-    const colors = [
-      ['#1B8060', '#F38E00', '#F38E00', '#F43B3B'],
-      ['#1B8060', '#F38E00', '#F38E00', '#F43B3B'],
-      ['#1B8060', '#F38E00', '#F43B3B', '#F43B3B'],
-      ['#F38E00', '#F38E00', '#F43B3B', '#F43B3B']
-    ];
-    // Draw grid
-    for (let g = 1; g <= 4; g++) {
-      for (let v = 1; v <= 4; v++) {
-        const row = 4 - g;
-        const x = (v - 1) * cellW;
-        const y = row * cellH;
-        ctx.fillStyle = colors[g - 1][v - 1];
-        ctx.fillRect(x, y, cellW, cellH);
-        ctx.strokeStyle = 'white';
-        ctx.strokeRect(x, y, cellW, cellH);
-      }
-    }
-    // Draw each risk as a point with its label
-    const pointColor = getComputedStyle(document.documentElement).getPropertyValue('--accent') || '#ffffff';
-    ctx.font = '12px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
-    risks.forEach(r => {
-      const v = parseInt(r.vraisemblance, 10);
-      const g = parseInt(r.gravite, 10);
-      if (!v || !g) return;
-      const label = r.libelle || r.titre || r.name || '';
-      const x = (v - 0.5) * cellW;
-      const y = (4 - g + 0.5) * cellH;
-      // Point
-      ctx.beginPath();
-      ctx.arc(x, y, 5, 0, Math.PI * 2);
-      ctx.fillStyle = pointColor;
-      ctx.fill();
-      ctx.strokeStyle = '#000';
-      ctx.stroke();
-      // Label above the point
-      ctx.fillStyle = 'white';
-      ctx.fillText(label, x, y - 8);
-    });
-    // Axis labels
-    ctx.fillStyle = 'white';
-    ctx.textBaseline = 'alphabetic';
-    ctx.textAlign = 'center';
-    for (let v = 1; v <= 4; v++) {
-      const x = (v - 0.5) * cellW;
-      ctx.fillText(String(v), x, height - 8);
-    }
-    ctx.textAlign = 'left';
-    for (let g = 1; g <= 4; g++) {
-      const y = (4 - g + 0.5) * cellH;
-      ctx.fillText(String(g), 4, y);
-    }
-    ctx.save();
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillText('Gravité', -height / 2, 12);
-    ctx.restore();
-    ctx.textAlign = 'center';
-    ctx.fillText('Vraisemblance', width / 2, height - 20);
   }
 
   // ----- Chart updates per atelier
@@ -5945,13 +5942,118 @@
   }
 
   function updateAtelier4Chart() {
-    const analysis = analyses[currentIndex];
-    if (!analysis || !analysis.data) return;
-    const risques = analysis.data.risques || [];
-    const canvas = document.getElementById('atelier4-chart');
-    if (canvas) {
-      drawRiskMatrix(canvas, risques);
+    const container = document.getElementById('atelier4-chart');
+    if (!container) {
+      if (atelier4ChartInstance) {
+        atelier4ChartInstance.dispose();
+        atelier4ChartInstance = null;
+      }
+      return;
     }
+    if (typeof echarts === 'undefined') return;
+
+    if (atelier4ChartInstance && atelier4ChartInstance.getDom() !== container) {
+      atelier4ChartInstance.dispose();
+      atelier4ChartInstance = null;
+    }
+    if (!atelier4ChartInstance) {
+      atelier4ChartInstance = echarts.init(container);
+    }
+
+    const analysis = analyses[currentIndex];
+    const risques = (analysis && analysis.data && Array.isArray(analysis.data.risques)) ? analysis.data.risques : [];
+    const data = risques.map(risk => {
+      const gravite = parseLevel(risk.gravite, null);
+      const vraisemblance = parseLevel(risk.vraisemblance, null);
+      if (gravite === null || vraisemblance === null) return null;
+      const label = risk.libelle || risk.titre || formatRiskIdentifier(risk.indice || risk.id || '') || 'Risque';
+      return {
+        name: label,
+        value: [gravite, vraisemblance],
+        description: risk.description || ''
+      };
+    }).filter(Boolean);
+
+    const scatterData = spreadInSquare(data, 0.14);
+    const accent = getCssVar('--accent', '#4da3ff');
+    const textPrimary = getCssVar('--text-primary', '#e6e9ef');
+    const textSecondary = getCssVar('--text-secondary', '#8aa0c4');
+
+    const option = {
+      backgroundColor: 'transparent',
+      title: {
+        text: 'Matrice des risques (niveau actuel)',
+        left: 'center',
+        textStyle: { color: textPrimary, fontSize: 18, fontWeight: 'bold' }
+      },
+      grid: { left: 60, right: 30, top: 70, bottom: 60 },
+      tooltip: {
+        trigger: 'item',
+        borderWidth: 1,
+        backgroundColor: '#0f172a',
+        borderColor: accent,
+        textStyle: { color: textPrimary },
+        formatter: (params) => {
+          const desc = params.data && params.data.description ? `<br/><em>${params.data.description}</em>` : '';
+          return `<strong>${params.name}</strong>${desc}<br/>Gravité : ${params.value[0]}<br/>Vraisemblance : ${params.value[1]}`;
+        }
+      },
+      xAxis: {
+        type: 'value',
+        min: 0,
+        max: 4,
+        splitNumber: 4,
+        name: 'Gravité',
+        nameGap: 30,
+        nameTextStyle: { color: textSecondary },
+        axisLine: { lineStyle: { color: textSecondary } },
+        axisLabel: { color: textSecondary },
+        splitLine: { lineStyle: { color: 'rgba(148,163,184,0.2)' } }
+      },
+      yAxis: {
+        type: 'value',
+        min: 0,
+        max: 4,
+        splitNumber: 4,
+        name: 'Vraisemblance',
+        nameGap: 40,
+        nameTextStyle: { color: textSecondary },
+        axisLine: { lineStyle: { color: textSecondary } },
+        axisLabel: { color: textSecondary },
+        splitLine: { lineStyle: { color: 'rgba(148,163,184,0.2)' } }
+      },
+      series: [
+        {
+          name: 'Risque actuel',
+          type: 'scatter',
+          data: scatterData,
+          symbolSize: 20,
+          itemStyle: { color: accent },
+          label: {
+            show: true,
+            formatter: '{b}',
+            color: textPrimary,
+            fontSize: 12,
+            position: 'top'
+          }
+        }
+      ],
+      animationDuration: 300,
+      graphic: scatterData.length ? [] : [
+        {
+          type: 'text',
+          left: 'center',
+          top: 'middle',
+          style: {
+            text: 'Ajoutez des risques pour alimenter la matrice.',
+            fill: textSecondary,
+            fontSize: 14
+          }
+        }
+      ]
+    };
+
+    atelier4ChartInstance.setOption(option, true);
   }
 
   function updateAtelier5Chart() {

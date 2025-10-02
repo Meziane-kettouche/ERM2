@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EBIOS Risk Manager – Atelier 4</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js" defer></script>
 </head>
 <body>
   <div id="app">
@@ -43,7 +44,7 @@
         <h2>Atelier 4 – Scénarios opérationnels</h2>
         <p>Pour chaque scénario opérationnel, reliez un <strong>évènement redouté</strong> à un <strong>chemin d’attaque stratégique</strong> issu de l’atelier 3. Vous pouvez associer un ou plusieurs risques à chaque scénario et préciser pour chacun la vraisemblance et la gravité (échelle 1 à 4).</p>
         <div class="chart-wrapper">
-          <canvas id="atelier4-chart" width="600" height="400" class="chart-canvas"></canvas>
+          <div id="atelier4-chart" class="chart-canvas chart-surface" role="img" aria-label="Matrice des risques actuels"></div>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem;">
           <div class="table-container" style="overflow-x:auto; flex:1;">
