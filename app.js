@@ -17,6 +17,8 @@
 
   let atelier4ChartInstance;
   let risquesChartInstance;
+  let atelier4DragHandlers = null;
+  let atelier5DragHandlers = null;
 
   if (typeof window !== 'undefined') {
     window.addEventListener('resize', () => {
@@ -83,7 +85,10 @@
 
   // Map a level (1-4) to a background colour used across ateliers.
   function levelColor(lvl) {
-    switch (parseInt(lvl, 10)) {
+    const num = parseFloat(lvl);
+    if (!Number.isFinite(num)) return 'transparent';
+    const bucket = Math.max(1, Math.min(4, Math.round(num)));
+    switch (bucket) {
       case 1: return '#2a9d8f';
       case 2: return '#e9c46a';
       case 3: return '#f4a261';
@@ -3388,9 +3393,10 @@
         td = document.createElement('td');
         const riskCell = document.createElement('div');
         riskCell.className = 'assoc-cell';
+        const formatCellColor = (value) => levelColor(parseLevel(value, 1));
         item.risks.forEach((rk, rIdx) => {
-          if (!rk.vraisemblance) rk.vraisemblance = 1;
-          if (!rk.gravite) rk.gravite = 1;
+          if (rk.vraisemblance === undefined || rk.vraisemblance === null) rk.vraisemblance = 1;
+          if (rk.gravite === undefined || rk.gravite === null) rk.gravite = 1;
           const tag = document.createElement('span');
           tag.className = 'assoc-item';
           const label = document.createElement('span');
@@ -3400,41 +3406,42 @@
           vLabel.textContent = 'V:';
           vLabel.title = 'Vraisemblance';
           tag.appendChild(vLabel);
-          const vSel = document.createElement('select');
-          [1,2,3,4].forEach(v => {
-            const o = document.createElement('option');
-            o.value = v;
-            o.textContent = `${v}`;
-            if (v === rk.vraisemblance) o.selected = true;
-            vSel.appendChild(o);
-          });
-          vSel.style.backgroundColor = levelColor(rk.vraisemblance);
-          vSel.onchange = e => {
-            rk.vraisemblance = parseInt(e.target.value,10);
-            e.target.style.backgroundColor = levelColor(rk.vraisemblance);
+          const vInput = document.createElement('input');
+          vInput.type = 'number';
+          vInput.step = '0.1';
+          vInput.min = '0';
+          vInput.max = '4';
+          vInput.value = rk.vraisemblance;
+          vInput.style.backgroundColor = formatCellColor(rk.vraisemblance);
+          vInput.addEventListener('input', (e) => {
+            const val = parseLevel(e.target.value, rk.vraisemblance);
+            rk.vraisemblance = val;
+            e.target.value = val;
+            e.target.style.backgroundColor = formatCellColor(val);
             saveAnalyses();
             updateAtelier4Chart();
-          };
-          tag.appendChild(vSel);
+          });
+          tag.appendChild(vInput);
           const gLabel = document.createElement('span');
           gLabel.textContent = 'G:';
           gLabel.title = 'Gravité';
           tag.appendChild(gLabel);
-          const gSel = document.createElement('select');
-          [1,2,3,4].forEach(v => {
-            const o = document.createElement('option');
-            o.value = v;
-            o.textContent = `${v}`;
-            if (v === rk.gravite) o.selected = true;
-            gSel.appendChild(o);
-          });
-          gSel.style.backgroundColor = levelColor(rk.gravite);
-          gSel.onchange = e => {
-            rk.gravite = parseInt(e.target.value,10);
-            e.target.style.backgroundColor = levelColor(rk.gravite);
+          const gInput = document.createElement('input');
+          gInput.type = 'number';
+          gInput.step = '0.1';
+          gInput.min = '0';
+          gInput.max = '4';
+          gInput.value = rk.gravite;
+          gInput.style.backgroundColor = formatCellColor(rk.gravite);
+          gInput.addEventListener('input', (e) => {
+            const val = parseLevel(e.target.value, rk.gravite);
+            rk.gravite = val;
+            e.target.value = val;
+            e.target.style.backgroundColor = formatCellColor(val);
             saveAnalyses();
-          };
-          tag.appendChild(gSel);
+            updateAtelier4Chart();
+          });
+          tag.appendChild(gInput);
           const rm = document.createElement('button');
           rm.className = 'remove-assoc';
           rm.textContent = '×';
@@ -4274,6 +4281,7 @@
         risquesChartInstance.dispose();
         risquesChartInstance = null;
       }
+      atelier5DragHandlers = null;
       return;
     }
     if (typeof echarts === 'undefined') return;
@@ -4323,7 +4331,7 @@
 
     const basePoints = [];
     if (analysis && analysis.data) {
-      (analysis.data.actionsRisques || []).forEach(row => {
+      (analysis.data.actionsRisques || []).forEach((row, rowIndex) => {
         if (!row) return;
         if (!row.riskId && row.riskName) {
           for (const [id, obj] of riskMap.entries()) {
@@ -4351,7 +4359,14 @@
         const displayId = formatRiskIdentifier(row.riskId || '');
         const label = displayId || row.riskName || risk.name || 'Risque';
         const description = row.riskName || risk.name || '';
-        basePoints.push({ name: label, description, initial, residual });
+        basePoints.push({
+          name: label,
+          description,
+          initial,
+          residual,
+          meta: { rowIndex, riskId: row.riskId || '' },
+          metaKey: `risk::${row.riskId || rowIndex}::${rowIndex}`
+        });
       });
     }
 
@@ -4417,31 +4432,39 @@
 
     const initialPoints = basePoints.map(point => ({
       name: point.name,
-      value: point.initial,
+      value: point.initial.slice(),
+      rawValue: point.initial.slice(),
       description: point.description,
-      type: 'Actuel'
+      type: 'Actuel',
+      meta: point.meta,
+      metaKey: point.metaKey
     }));
     const residualPoints = basePoints.map(point => ({
       name: point.name,
-      value: point.residual,
+      value: point.residual.slice(),
+      rawValue: point.residual.slice(),
       description: point.description,
-      type: 'Résiduel'
+      type: 'Résiduel',
+      meta: point.meta,
+      metaKey: point.metaKey
     }));
 
     const initialSpread = spreadInSquare(initialPoints, 0.14);
     const residualSpread = spreadInSquare(residualPoints, 0.14);
 
-    const initialPositions = new Map(initialSpread.map(item => [item.name, item.value]));
-    const residualPositions = new Map(residualSpread.map(item => [item.name, item.value]));
+    const initialPositions = new Map(initialSpread.map(item => [(item.metaKey || item.name), item.value]));
+    const residualPositions = new Map(residualSpread.map(item => [(item.metaKey || item.name), item.value]));
 
     const lineData = basePoints.map(point => ({
       name: point.name,
       description: point.description,
-      from: point.initial,
-      to: point.residual,
+      from: point.initial.slice(),
+      to: point.residual.slice(),
+      meta: point.meta,
+      metaKey: point.metaKey,
       coords: [
-        initialPositions.get(point.name) || point.initial,
-        residualPositions.get(point.name) || point.residual
+        initialPositions.get(point.metaKey || point.name) || point.initial,
+        residualPositions.get(point.metaKey || point.name) || point.residual
       ]
     }));
 
@@ -4467,13 +4490,16 @@
         formatter: (params) => {
           if (params.seriesType === 'lines') {
             const data = params.data || {};
-            const from = data.from || (data.coords ? data.coords[0] : []);
-            const to = data.to || (data.coords ? data.coords[1] : []);
+            const fromRaw = data.from || (data.coords ? data.coords[0] : []);
+            const toRaw = data.to || (data.coords ? data.coords[1] : []);
             const desc = data.description ? `<br/><em>${data.description}</em>` : '';
-            return `<strong>${data.name}</strong>${desc}<br/>Actuel : G ${from[0]} / V ${from[1]}<br/>Résiduel : G ${to[0]} / V ${to[1]}`;
+            return `<strong>${data.name}</strong>${desc}<br/>Actuel : G ${fromRaw[0]} / V ${fromRaw[1]}<br/>Résiduel : G ${toRaw[0]} / V ${toRaw[1]}`;
           }
           const desc = params.data && params.data.description ? `<br/><em>${params.data.description}</em>` : '';
-          return `<strong>${params.name}</strong>${desc}<br/>${params.seriesName} – Gravité : ${params.value[0]}<br/>${params.seriesName} – Vraisemblance : ${params.value[1]}`;
+          const raw = params.data && params.data.rawValue ? params.data.rawValue : params.value;
+          const gravite = raw && raw[0] !== undefined ? raw[0] : params.value[0];
+          const vraisemblance = raw && raw[1] !== undefined ? raw[1] : params.value[1];
+          return `<strong>${params.name}</strong>${desc}<br/>${params.seriesName} – Gravité : ${gravite}<br/>${params.seriesName} – Vraisemblance : ${vraisemblance}`;
         }
       },
       xAxis: {
@@ -4546,6 +4572,137 @@
     };
 
     risquesChartInstance.setOption(option, true);
+    bindAtelier5Drag(residualSpread, lineData);
+  }
+
+  function bindAtelier5Drag(residualSpread, lineData) {
+    if (!risquesChartInstance) return;
+    const zr = risquesChartInstance.getZr();
+    const dom = risquesChartInstance.getDom();
+    if (atelier5DragHandlers) {
+      risquesChartInstance.off('mousedown', atelier5DragHandlers.mousedown);
+      zr.off('mousemove', atelier5DragHandlers.mousemove);
+      zr.off('mouseup', atelier5DragHandlers.mouseup);
+      zr.off('globalout', atelier5DragHandlers.mouseup);
+    }
+    let dragging = null;
+    const clamp = (val) => Math.max(0, Math.min(4, val));
+    const mousedown = (params) => {
+      if (!params || params.seriesIndex !== 2) return;
+      if (!params.data || !params.data.meta) return;
+      dragging = params.data;
+      dom.style.cursor = 'grabbing';
+    };
+    const mousemove = (event) => {
+      if (!dragging) return;
+      const pos = [event.offsetX, event.offsetY];
+      const dataPos = risquesChartInstance.convertFromPixel({ seriesIndex: 2 }, pos);
+      if (!dataPos) return;
+      const newValue = [
+        Number(clamp(dataPos[0]).toFixed(2)),
+        Number(clamp(dataPos[1]).toFixed(2))
+      ];
+      dragging.value = newValue;
+      dragging.rawValue = newValue.slice();
+      const metaKey = dragging.metaKey || (dragging.meta ? `risk::${dragging.meta.riskId || dragging.meta.rowIndex}::${dragging.meta.rowIndex}` : null);
+      if (metaKey) {
+        const line = lineData.find(item => (item.metaKey || item.name) === metaKey);
+        if (line) {
+          line.coords[1] = newValue.slice();
+          line.to = newValue.slice();
+        }
+      }
+      risquesChartInstance.setOption({
+        series: [
+          { data: lineData },
+          {},
+          { data: residualSpread }
+        ]
+      });
+    };
+    const endDrag = () => {
+      if (!dragging) return;
+      const meta = dragging.meta || {};
+      const analysis = analyses[currentIndex];
+      if (analysis && analysis.data && Array.isArray(analysis.data.actionsRisques)) {
+        const row = analysis.data.actionsRisques[meta.rowIndex];
+        if (row) {
+          row.residualG = dragging.value[0];
+          row.residualV = dragging.value[1];
+          saveAnalyses();
+          renderRisquesActions();
+          renderRisquesChart();
+        }
+      }
+      dom.style.cursor = '';
+      dragging = null;
+    };
+    risquesChartInstance.on('mousedown', { seriesIndex: 2 }, mousedown);
+    zr.on('mousemove', mousemove);
+    zr.on('mouseup', endDrag);
+    zr.on('globalout', endDrag);
+    atelier5DragHandlers = { mousedown, mousemove, mouseup: endDrag };
+  }
+
+  function bindAtelier4Drag(scatterData) {
+    if (!atelier4ChartInstance) return;
+    const zr = atelier4ChartInstance.getZr();
+    const dom = atelier4ChartInstance.getDom();
+    if (atelier4DragHandlers) {
+      atelier4ChartInstance.off('mousedown', atelier4DragHandlers.mousedown);
+      zr.off('mousemove', atelier4DragHandlers.mousemove);
+      zr.off('mouseup', atelier4DragHandlers.mouseup);
+      zr.off('globalout', atelier4DragHandlers.mouseup);
+    }
+    let dragging = null;
+    const clamp = (val) => Math.max(0, Math.min(4, val));
+    const mousedown = (params) => {
+      if (!params || !params.data || !params.data.meta || params.data.meta.type !== 'scenario') return;
+      dragging = params.data;
+      dom.style.cursor = 'grabbing';
+    };
+    const mousemove = (event) => {
+      if (!dragging) return;
+      const pos = [event.offsetX, event.offsetY];
+      const dataPos = atelier4ChartInstance.convertFromPixel({ seriesIndex: 0 }, pos);
+      if (!dataPos) return;
+      const newValue = [
+        Number(clamp(dataPos[0]).toFixed(2)),
+        Number(clamp(dataPos[1]).toFixed(2))
+      ];
+      dragging.value = newValue;
+      dragging.rawValue = newValue.slice();
+      atelier4ChartInstance.setOption({
+        series: [
+          { data: scatterData }
+        ]
+      });
+    };
+    const endDrag = () => {
+      if (!dragging) return;
+      const meta = dragging.meta || {};
+      if (meta.type === 'scenario') {
+        const analysis = analyses[currentIndex];
+        if (analysis && analysis.data && Array.isArray(analysis.data.so)) {
+          const sIdx = analysis.data.so.findIndex((so, idx) => (so.id || `scenario-${idx}`) === meta.scenarioId);
+          const targetScenario = sIdx >= 0 ? analysis.data.so[sIdx] : null;
+          if (targetScenario && Array.isArray(targetScenario.risks) && targetScenario.risks[meta.riskIndex]) {
+            const rk = targetScenario.risks[meta.riskIndex];
+            rk.gravite = dragging.value[0];
+            rk.vraisemblance = dragging.value[1];
+            saveAnalyses();
+            renderSO();
+          }
+        }
+      }
+      dom.style.cursor = '';
+      dragging = null;
+    };
+    atelier4ChartInstance.on('mousedown', { seriesIndex: 0 }, mousedown);
+    zr.on('mousemove', mousemove);
+    zr.on('mouseup', endDrag);
+    zr.on('globalout', endDrag);
+    atelier4DragHandlers = { mousedown, mousemove, mouseup: endDrag };
   }
 
   // Render actions for risks: show each risk and allow adding actions and residual levels
@@ -4562,9 +4719,11 @@
       const label = riskObj.libelle || riskObj.titre || riskObj.indice || riskObj.id || '';
       if (!label) return;
       const id = riskObj.id || label;
-      const cur = riskMap.get(id) || { id, name: label, vraisemblance: parseInt(riskObj.vraisemblance, 10) || 1, gravite: parseInt(riskObj.gravite, 10) || 1 };
-      cur.vraisemblance = Math.max(cur.vraisemblance, parseInt(riskObj.vraisemblance, 10) || 1);
-      cur.gravite = Math.max(cur.gravite, parseInt(riskObj.gravite, 10) || 1);
+      const vr = parseLevel(riskObj.vraisemblance, 1);
+      const gr = parseLevel(riskObj.gravite, 1);
+      const cur = riskMap.get(id) || { id, name: label, vraisemblance: vr, gravite: gr };
+      cur.vraisemblance = Math.max(cur.vraisemblance, vr);
+      cur.gravite = Math.max(cur.gravite, gr);
       riskMap.set(id, cur);
     });
     (analysis.data.so || []).forEach(so => {
@@ -4572,9 +4731,11 @@
         const label = rk.name || rk.id;
         if (!label) return;
         const id = rk.id || rk.name;
-        const cur = riskMap.get(id) || { id, name: label, vraisemblance: parseInt(rk.vraisemblance, 10) || 1, gravite: parseInt(rk.gravite, 10) || 1 };
-        cur.vraisemblance = Math.max(cur.vraisemblance, parseInt(rk.vraisemblance, 10) || 1);
-        cur.gravite = Math.max(cur.gravite, parseInt(rk.gravite, 10) || 1);
+        const vr = parseLevel(rk.vraisemblance, 1);
+        const gr = parseLevel(rk.gravite, 1);
+        const cur = riskMap.get(id) || { id, name: label, vraisemblance: vr, gravite: gr };
+        cur.vraisemblance = Math.max(cur.vraisemblance, vr);
+        cur.gravite = Math.max(cur.gravite, gr);
         riskMap.set(id, cur);
       });
     });
@@ -4615,52 +4776,54 @@
       }
       tr.appendChild(tdName);
       const tdVr = document.createElement('td');
-      tdVr.textContent = risk.vraisemblance;
-      tdVr.style.backgroundColor = levelColor(risk.vraisemblance);
+      const vrDisplay = parseLevel(risk.vraisemblance, 1);
+      tdVr.textContent = vrDisplay;
+      tdVr.style.backgroundColor = levelColor(vrDisplay);
       tr.appendChild(tdVr);
       const tdGr = document.createElement('td');
-      tdGr.textContent = risk.gravite;
-      tdGr.style.backgroundColor = levelColor(risk.gravite);
+      const grDisplay = parseLevel(risk.gravite, 1);
+      tdGr.textContent = grDisplay;
+      tdGr.style.backgroundColor = levelColor(grDisplay);
       tr.appendChild(tdGr);
-      // Residual vraisemblance select
+      // Residual vraisemblance input
       const tdResVr = document.createElement('td');
-      const selVr = document.createElement('select');
-      selVr.className = 'form-select';
-      for (let i = 1; i <= 4; i++) {
-        const opt = document.createElement('option');
-        opt.value = i;
-        opt.textContent = i;
-        if (row.residualV == i) opt.selected = true;
-        selVr.appendChild(opt);
-      }
-      selVr.style.backgroundColor = levelColor(row.residualV || selVr.value);
-      selVr.addEventListener('change', (e) => {
-        row.residualV = parseInt(e.target.value, 10);
-        e.target.style.backgroundColor = levelColor(row.residualV);
+      const inpResidualV = document.createElement('input');
+      inpResidualV.type = 'number';
+      inpResidualV.step = '0.1';
+      inpResidualV.min = '0';
+      inpResidualV.max = '4';
+      const vrValue = row.residualV !== undefined ? row.residualV : risk.vraisemblance;
+      inpResidualV.value = vrValue;
+      inpResidualV.style.backgroundColor = levelColor(parseLevel(vrValue, risk.vraisemblance));
+      inpResidualV.addEventListener('input', (e) => {
+        const val = parseLevel(e.target.value, row.residualV !== undefined ? row.residualV : risk.vraisemblance);
+        row.residualV = val;
+        e.target.value = val;
+        e.target.style.backgroundColor = levelColor(val);
         saveAnalyses();
         renderRisquesChart();
       });
-      tdResVr.appendChild(selVr);
+      tdResVr.appendChild(inpResidualV);
       tr.appendChild(tdResVr);
-      // Residual gravite select
+      // Residual gravite input
       const tdResGr = document.createElement('td');
-      const selGr = document.createElement('select');
-      selGr.className = 'form-select';
-      for (let i = 1; i <= 4; i++) {
-        const opt = document.createElement('option');
-        opt.value = i;
-        opt.textContent = i;
-        if (row.residualG == i) opt.selected = true;
-        selGr.appendChild(opt);
-      }
-      selGr.style.backgroundColor = levelColor(row.residualG || selGr.value);
-      selGr.addEventListener('change', (e) => {
-        row.residualG = parseInt(e.target.value, 10);
-        e.target.style.backgroundColor = levelColor(row.residualG);
+      const inpResidualG = document.createElement('input');
+      inpResidualG.type = 'number';
+      inpResidualG.step = '0.1';
+      inpResidualG.min = '0';
+      inpResidualG.max = '4';
+      const grValue = row.residualG !== undefined ? row.residualG : risk.gravite;
+      inpResidualG.value = grValue;
+      inpResidualG.style.backgroundColor = levelColor(parseLevel(grValue, risk.gravite));
+      inpResidualG.addEventListener('input', (e) => {
+        const val = parseLevel(e.target.value, row.residualG !== undefined ? row.residualG : risk.gravite);
+        row.residualG = val;
+        e.target.value = val;
+        e.target.style.backgroundColor = levelColor(val);
         saveAnalyses();
         renderRisquesChart();
       });
-      tdResGr.appendChild(selGr);
+      tdResGr.appendChild(inpResidualG);
       tr.appendChild(tdResGr);
       // Actions cell: nested table for actions associated with this risk
       const tdActions = document.createElement('td');
@@ -5948,6 +6111,7 @@
         atelier4ChartInstance.dispose();
         atelier4ChartInstance = null;
       }
+      atelier4DragHandlers = null;
       return;
     }
     if (typeof echarts === 'undefined') return;
@@ -5964,37 +6128,50 @@
     const risquesList = [];
     if (analysis && analysis.data) {
       if (Array.isArray(analysis.data.risques)) {
-        risquesList.push(...analysis.data.risques);
+        analysis.data.risques.forEach((risk, idx) => {
+          if (!risk) return;
+          const gravite = parseLevel(risk.gravite, null);
+          const vraisemblance = parseLevel(risk.vraisemblance, null);
+          if (gravite === null || vraisemblance === null) return;
+          const idPart = formatRiskIdentifier(risk.indice || risk.id || risk.libelle || risk.titre || risk.name || '');
+          const label = risk.libelle || risk.titre || idPart || risk.name || 'Risque';
+          const description = risk.description || risk.details || risk.detail || '';
+          risquesList.push({
+            name: label,
+            value: [gravite, vraisemblance],
+            rawValue: [gravite, vraisemblance],
+            description,
+            meta: { type: 'global', riskId: risk.id || idPart || `global-${idx}` },
+            metaKey: `global::${risk.id || idPart || idx}`
+          });
+        });
       }
       if (Array.isArray(analysis.data.so)) {
-        analysis.data.so.forEach(scenario => {
+        analysis.data.so.forEach((scenario, sIdx) => {
           if (!scenario || !Array.isArray(scenario.risks)) return;
-          scenario.risks.forEach(risk => {
+          const scenarioId = scenario.id || `scenario-${sIdx}`;
+          scenario.risks.forEach((risk, rIdx) => {
             if (!risk) return;
+            const gravite = parseLevel(risk.gravite, null);
+            const vraisemblance = parseLevel(risk.vraisemblance, null);
+            if (gravite === null || vraisemblance === null) return;
+            const idPart = formatRiskIdentifier(risk.id || risk.name || '');
+            const label = risk.name || idPart || 'Risque';
+            const description = risk.description || risk.details || risk.detail || '';
             risquesList.push({
-              // Preserve name so the identifier can be derived for the chart label
-              name: risk.name,
-              gravite: risk.gravite,
-              vraisemblance: risk.vraisemblance,
-              description: risk.description
+              name: label,
+              value: [gravite, vraisemblance],
+              rawValue: [gravite, vraisemblance],
+              description,
+              meta: { type: 'scenario', scenarioId, riskIndex: rIdx },
+              metaKey: `scenario::${scenarioId}::${rIdx}`
             });
           });
         });
       }
     }
 
-    const data = risquesList.map(risk => {
-      const gravite = parseLevel(risk.gravite, null);
-      const vraisemblance = parseLevel(risk.vraisemblance, null);
-      if (gravite === null || vraisemblance === null) return null;
-      const idPart = formatRiskIdentifier(risk.indice || risk.id || risk.name || '');
-      const label = risk.libelle || risk.titre || idPart || risk.name || 'Risque';
-      return {
-        name: label,
-        value: [gravite, vraisemblance],
-        description: risk.description || ''
-      };
-    }).filter(Boolean);
+    const data = risquesList;
 
     const scatterData = spreadInSquare(data, 0.14);
     const accent = getCssVar('--accent', '#4da3ff');
@@ -6017,7 +6194,10 @@
         textStyle: { color: textPrimary },
         formatter: (params) => {
           const desc = params.data && params.data.description ? `<br/><em>${params.data.description}</em>` : '';
-          return `<strong>${params.name}</strong>${desc}<br/>Gravité : ${params.value[0]}<br/>Vraisemblance : ${params.value[1]}`;
+          const raw = params.data && params.data.rawValue ? params.data.rawValue : params.value;
+          const gravite = raw && raw[0] !== undefined ? raw[0] : params.value[0];
+          const vraisemblance = raw && raw[1] !== undefined ? raw[1] : params.value[1];
+          return `<strong>${params.name}</strong>${desc}<br/>Gravité : ${gravite}<br/>Vraisemblance : ${vraisemblance}`;
         }
       },
       xAxis: {
@@ -6076,6 +6256,7 @@
     };
 
     atelier4ChartInstance.setOption(option, true);
+    bindAtelier4Drag(scatterData);
   }
 
   function updateAtelier5Chart() {
