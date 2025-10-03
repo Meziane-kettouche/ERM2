@@ -115,9 +115,15 @@
         <div id="atelier5-risques-tab" class="atelier5-subtab-content">
           <p>Pour chaque risque identifié dans l’atelier 4, indiquez les actions de traitement, le niveau de vraisemblance actuel et le niveau résiduel souhaité.</p>
           <div class="chart-wrapper">
-            <div class="risk-chart-grid">
-              <div id="risques-chart" class="chart-canvas chart-surface" role="img" aria-label="Matrice gravité vraisemblance"></div>
-              <div id="risques-score-chart" class="chart-canvas chart-surface" role="img" aria-label="Indice de criticité des risques (initial vs résiduel)"></div>
+            <div class="risk-chart-carousel" data-active-index="0">
+              <div class="carousel-track">
+                <div id="risques-chart" class="chart-canvas chart-surface is-active" role="img" aria-label="Matrice gravité vraisemblance" aria-hidden="false"></div>
+                <div id="risques-score-chart" class="chart-canvas chart-surface" role="img" aria-label="Indice de criticité des risques (initial vs résiduel)" aria-hidden="true"></div>
+              </div>
+              <div class="carousel-dots" role="tablist" aria-label="Diagrammes des risques">
+                <button type="button" class="carousel-dot active" data-target="0" aria-label="Afficher la matrice gravité vraisemblance" aria-controls="risques-chart" aria-pressed="true"></button>
+                <button type="button" class="carousel-dot" data-target="1" aria-label="Afficher l'indice de criticité" aria-controls="risques-score-chart" aria-pressed="false"></button>
+              </div>
             </div>
           </div>
           <div class="table-container">
