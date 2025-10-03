@@ -1131,6 +1131,17 @@ canvas {
 #ops-table .assoc-item select {
   width: auto;
 }
+#ops-table .assoc-item input[type="number"] {
+  width: 3.2rem;
+  padding: 0.1rem 0.25rem;
+  font-size: 0.75rem;
+  text-align: center;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 3px;
+}
+#ops-table .assoc-item span {
+  white-space: nowrap;
+}
 
 /* Radar chart styles for Atelier 3 cartography */
 .radar-board {
