@@ -20,6 +20,7 @@
   let risquesScoreChartInstance;
   let atelier4DragHandlers = null;
   let atelier5DragHandlers = null;
+  let riskChartCarouselIndex = 0;
 
   if (typeof window !== 'undefined') {
     window.addEventListener('resize', () => {
@@ -4277,6 +4278,62 @@
     addDataTableResizers('parties-actions-table');
   }
 
+  function updateRiskChartCarousel(index) {
+    const carousel = document.querySelector('.risk-chart-carousel');
+    if (!carousel) return;
+    const slides = carousel.querySelectorAll('.carousel-track .chart-canvas');
+    const dots = carousel.querySelectorAll('.carousel-dot');
+    if (!slides.length) return;
+    const maxIndex = slides.length - 1;
+    const targetIndex = Math.max(0, Math.min(index, maxIndex));
+    riskChartCarouselIndex = targetIndex;
+    slides.forEach((slide, idx) => {
+      const isActive = idx === targetIndex;
+      slide.classList.toggle('is-active', isActive);
+      slide.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+      if (isActive) {
+        if (slide.id === 'risques-chart' && risquesChartInstance) {
+          risquesChartInstance.resize();
+        }
+        if (slide.id === 'risques-score-chart' && risquesScoreChartInstance) {
+          risquesScoreChartInstance.resize();
+        }
+      }
+    });
+    dots.forEach((dot, idx) => {
+      const isActive = idx === targetIndex;
+      dot.classList.toggle('active', isActive);
+      dot.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+  }
+
+  function setupRiskChartCarousel() {
+    const carousel = document.querySelector('.risk-chart-carousel');
+    if (!carousel) return;
+    if (carousel.dataset.initialized === 'true') {
+      updateRiskChartCarousel(riskChartCarouselIndex);
+      return;
+    }
+    const dots = carousel.querySelectorAll('.carousel-dot');
+    dots.forEach(dot => {
+      const targetIndex = Number(dot.getAttribute('data-target'));
+      const activate = () => {
+        if (!Number.isNaN(targetIndex)) {
+          updateRiskChartCarousel(targetIndex);
+        }
+      };
+      dot.addEventListener('click', activate);
+      dot.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          activate();
+        }
+      });
+    });
+    carousel.dataset.initialized = 'true';
+    updateRiskChartCarousel(riskChartCarouselIndex);
+  }
+
   // Render actions for risks: show each risk and allow adding actions and residual levels
   function renderRisquesChart() {
     const container = document.getElementById('risques-chart');
@@ -4290,6 +4347,8 @@
       return;
     }
     if (typeof echarts === 'undefined') return;
+
+    setupRiskChartCarousel();
 
     if (risquesChartInstance && risquesChartInstance.getDom() !== container) {
       risquesChartInstance.dispose();
@@ -4616,28 +4675,21 @@
       risquesScoreChartInstance = echarts.init(container);
     }
 
+    setupRiskChartCarousel();
+
     const accent = getCssVar('--accent', '#4da3ff');
     const danger = getCssVar('--danger', '#e74c3c');
     const textPrimary = getCssVar('--text-primary', '#e6e9ef');
     const textSecondary = getCssVar('--text-secondary', '#8aa0c4');
 
-    const formatScore = (val) => {
-      if (!Number.isFinite(val)) return '-';
-      let str = val.toFixed(5);
-      str = str.replace(/0+$/, '');
-      if (str.endsWith('.')) str = str.slice(0, -1);
-      return str;
-    };
-
     if (!points || !points.length) {
       risquesScoreChartInstance.setOption({
         backgroundColor: 'transparent',
         title: {
-          text: 'Indice de criticité (Initial vs Résiduel)',
+          text: 'Répartition des indices de criticité',
           left: 'center',
           textStyle: { color: textPrimary, fontSize: 18, fontWeight: 'bold' }
         },
-        grid: { left: 60, right: 30, top: 80, bottom: 80 },
         xAxis: {
           type: 'category',
           data: [],
@@ -4646,19 +4698,13 @@
           splitLine: { show: false }
         },
         yAxis: {
-          type: 'value',
+          type: 'category',
+          data: ['Initial', 'Résiduel'],
           axisLabel: { color: textSecondary },
           axisLine: { lineStyle: { color: textSecondary } },
-          splitLine: { lineStyle: { color: 'rgba(148,163,184,0.2)' } },
-          name: 'Indice',
-          nameTextStyle: { color: textSecondary },
-          min: 0
+          splitLine: { lineStyle: { color: 'rgba(148,163,184,0.2)' } }
         },
-        legend: {
-          data: ['Initial', 'Résiduel'],
-          top: 40,
-          textStyle: { color: textSecondary }
-        },
+        grid: { left: 50, right: 40, top: 80, bottom: 70 },
         series: [],
         graphic: [
           {
@@ -4676,69 +4722,130 @@
       return;
     }
 
-    const categories = points.map(point => point.name);
-    const initialValues = points.map(point => point.initial);
-    const residualValues = points.map(point => point.residual);
-    const shouldRotate = categories.some(name => (name || '').length > 12);
+    const severityRanges = [
+      { label: 'Insignifiant', range: [0, 1] },
+      { label: 'Faible', range: [1, 2] },
+      { label: 'Élevé', range: [2, 3] },
+      { label: 'Critique', range: [3, 4] },
+      { label: 'Maximal', range: [4, 5] }
+    ];
+    const types = ['Initial', 'Résiduel'];
+    const severityColors = ['#22c55e', '#84cc16', '#facc15', '#f97316', '#ef4444'];
+
+    const getSeverityIndex = (value) => {
+      for (let i = 0; i < severityRanges.length; i++) {
+        const [min, max] = severityRanges[i].range;
+        if (value >= min && value <= max) {
+          return i;
+        }
+      }
+      return severityRanges.length - 1;
+    };
+
+    const aggregationMap = new Map();
+    points.forEach(point => {
+      types.forEach(type => {
+        const value = type === 'Initial' ? Number(point.initial) : Number(point.residual);
+        if (!Number.isFinite(value)) return;
+        const normalizedValue = Math.max(0, Math.min(value, severityRanges[severityRanges.length - 1].range[1]));
+        const severityIndex = getSeverityIndex(normalizedValue);
+        const key = `${severityIndex}-${type}`;
+        let entry = aggregationMap.get(key);
+        if (!entry) {
+          entry = {
+            severityIndex,
+            type,
+            count: 0,
+            risks: []
+          };
+          aggregationMap.set(key, entry);
+        }
+        entry.count += 1;
+        if (point.name) {
+          entry.risks.push(point.name);
+        }
+      });
+    });
+
+    const aggregatedData = Array.from(aggregationMap.values());
+    const scatterData = aggregatedData.map(entry => {
+      const typeIndex = types.indexOf(entry.type);
+      return {
+        value: [entry.severityIndex, typeIndex, entry.count],
+        count: entry.count,
+        risks: entry.risks,
+        severityLabel: severityRanges[entry.severityIndex].label,
+        typeLabel: entry.type
+      };
+    });
 
     risquesScoreChartInstance.setOption({
       backgroundColor: 'transparent',
       title: {
-        text: 'Indice de criticité (Initial vs Résiduel)',
+        text: 'Répartition des indices de criticité',
         left: 'center',
         textStyle: { color: textPrimary, fontSize: 18, fontWeight: 'bold' }
       },
       tooltip: {
-        trigger: 'axis',
-        axisPointer: { type: 'shadow' },
+        position: 'top',
+        backgroundColor: '#0f172a',
+        borderColor: accent,
+        borderWidth: 1,
+        textStyle: { color: textPrimary },
         formatter: (params) => {
-          if (!Array.isArray(params)) return '';
-          const lines = [`<strong>${params[0].axisValue}</strong>`];
-          params.forEach(item => {
-            lines.push(`${item.marker || ''} ${item.seriesName}: ${formatScore(Number(item.data))}`);
-          });
-          return lines.join('<br/>');
+          if (!params || !params.data) return '';
+          const data = params.data;
+          const risksList = (data.risks && data.risks.length)
+            ? data.risks.join(', ')
+            : 'Aucun identifiant';
+          return `
+            <strong>${data.count} risque(s) ${data.severityLabel}</strong><br/>
+            ${data.typeLabel} : ${risksList}
+          `;
         }
       },
-      legend: {
-        data: ['Initial', 'Résiduel'],
-        top: 40,
-        textStyle: { color: textSecondary }
-      },
-      grid: { left: 60, right: 30, top: 80, bottom: shouldRotate ? 110 : 80 },
+      grid: { left: 60, right: 40, top: 80, bottom: 70 },
       xAxis: {
         type: 'category',
-        data: categories,
-        axisLabel: {
-          color: textSecondary,
-          rotate: shouldRotate ? 20 : 0
-        },
+        data: severityRanges.map(item => item.label),
+        boundaryGap: true,
+        axisLabel: { color: textSecondary },
+        axisLine: { lineStyle: { color: textSecondary } },
+        splitLine: { show: true, lineStyle: { color: 'rgba(148,163,184,0.15)' } }
+      },
+      yAxis: {
+        type: 'category',
+        data: types,
+        axisLabel: { color: textSecondary },
         axisLine: { lineStyle: { color: textSecondary } },
         splitLine: { show: false }
       },
-      yAxis: {
-        type: 'value',
-        axisLabel: { color: textSecondary },
-        axisLine: { lineStyle: { color: textSecondary } },
-        splitLine: { lineStyle: { color: 'rgba(148,163,184,0.2)' } },
-        name: 'Indice',
-        nameTextStyle: { color: textSecondary },
-        min: 0
-      },
       series: [
         {
-          name: 'Initial',
-          type: 'bar',
-          data: initialValues,
-          itemStyle: { color: danger },
-          emphasis: { focus: 'series' }
-        },
-        {
-          name: 'Résiduel',
-          type: 'bar',
-          data: residualValues,
-          itemStyle: { color: accent },
-          emphasis: { focus: 'series' }
+          name: 'Répartition',
+          type: 'scatter',
+          symbolSize: (val) => {
+            const base = Array.isArray(val) && val.length >= 3 ? Number(val[2]) : 0;
+            return Math.max(14, base * 14);
+          },
+          data: scatterData,
+          label: {
+            show: true,
+            position: 'top',
+            color: textPrimary,
+            formatter: (params) => {
+              const count = params && params.data ? params.data.count : 0;
+              return count > 0 ? `${count}` : '';
+            }
+          },
+          itemStyle: {
+            color: (params) => {
+              const severityIndex = Array.isArray(params.value) ? params.value[0] : 0;
+              return severityColors[severityIndex] || danger;
+            },
+            shadowBlur: 12,
+            shadowColor: 'rgba(15, 23, 42, 0.45)'
+          }
         }
       ],
       animationDuration: 300
