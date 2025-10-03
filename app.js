@@ -17,6 +17,7 @@
 
   let atelier4ChartInstance;
   let risquesChartInstance;
+  let risquesScoreChartInstance;
   let atelier4DragHandlers = null;
   let atelier5DragHandlers = null;
 
@@ -27,6 +28,9 @@
       }
       if (risquesChartInstance) {
         risquesChartInstance.resize();
+      }
+      if (risquesScoreChartInstance) {
+        risquesScoreChartInstance.resize();
       }
     });
   }
@@ -4282,6 +4286,7 @@
         risquesChartInstance = null;
       }
       atelier5DragHandlers = null;
+      renderRisquesScoreChart([]);
       return;
     }
     if (typeof echarts === 'undefined') return;
@@ -4376,6 +4381,7 @@
     const textSecondary = getCssVar('--text-secondary', '#8aa0c4');
 
     if (!basePoints.length) {
+      renderRisquesScoreChart([]);
       risquesChartInstance.setOption({
         backgroundColor: 'transparent',
         title: {
@@ -4429,6 +4435,21 @@
       }, true);
       return;
     }
+
+    const scorePoints = basePoints.map(point => {
+      const gravInitial = Number(point.initial && point.initial[0] !== undefined ? point.initial[0] : 0);
+      const vraisInitial = Number(point.initial && point.initial[1] !== undefined ? point.initial[1] : 0);
+      const gravResidual = Number(point.residual && point.residual[0] !== undefined ? point.residual[0] : 0);
+      const vraisResidual = Number(point.residual && point.residual[1] !== undefined ? point.residual[1] : 0);
+      const initialScore = Number((gravInitial * vraisInitial * 0.3125).toFixed(5));
+      const residualScore = Number((gravResidual * vraisResidual * 0.3125).toFixed(5));
+      return {
+        name: point.name,
+        initial: initialScore,
+        residual: residualScore,
+        description: point.description
+      };
+    });
 
     const initialPoints = basePoints.map(point => ({
       name: point.name,
@@ -4572,7 +4593,156 @@
     };
 
     risquesChartInstance.setOption(option, true);
+    renderRisquesScoreChart(scorePoints);
     bindAtelier5Drag(residualSpread, lineData);
+  }
+
+  function renderRisquesScoreChart(points) {
+    const container = document.getElementById('risques-score-chart');
+    if (!container) {
+      if (risquesScoreChartInstance) {
+        risquesScoreChartInstance.dispose();
+        risquesScoreChartInstance = null;
+      }
+      return;
+    }
+    if (typeof echarts === 'undefined') return;
+
+    if (risquesScoreChartInstance && risquesScoreChartInstance.getDom() !== container) {
+      risquesScoreChartInstance.dispose();
+      risquesScoreChartInstance = null;
+    }
+    if (!risquesScoreChartInstance) {
+      risquesScoreChartInstance = echarts.init(container);
+    }
+
+    const accent = getCssVar('--accent', '#4da3ff');
+    const danger = getCssVar('--danger', '#e74c3c');
+    const textPrimary = getCssVar('--text-primary', '#e6e9ef');
+    const textSecondary = getCssVar('--text-secondary', '#8aa0c4');
+
+    const formatScore = (val) => {
+      if (!Number.isFinite(val)) return '-';
+      let str = val.toFixed(5);
+      str = str.replace(/0+$/, '');
+      if (str.endsWith('.')) str = str.slice(0, -1);
+      return str;
+    };
+
+    if (!points || !points.length) {
+      risquesScoreChartInstance.setOption({
+        backgroundColor: 'transparent',
+        title: {
+          text: 'Indice de criticité (Initial vs Résiduel)',
+          left: 'center',
+          textStyle: { color: textPrimary, fontSize: 18, fontWeight: 'bold' }
+        },
+        grid: { left: 60, right: 30, top: 80, bottom: 80 },
+        xAxis: {
+          type: 'category',
+          data: [],
+          axisLabel: { color: textSecondary },
+          axisLine: { lineStyle: { color: textSecondary } },
+          splitLine: { show: false }
+        },
+        yAxis: {
+          type: 'value',
+          axisLabel: { color: textSecondary },
+          axisLine: { lineStyle: { color: textSecondary } },
+          splitLine: { lineStyle: { color: 'rgba(148,163,184,0.2)' } },
+          name: 'Indice',
+          nameTextStyle: { color: textSecondary },
+          min: 0
+        },
+        legend: {
+          data: ['Initial', 'Résiduel'],
+          top: 40,
+          textStyle: { color: textSecondary }
+        },
+        series: [],
+        graphic: [
+          {
+            type: 'text',
+            left: 'center',
+            top: 'middle',
+            style: {
+              text: 'Ajoutez des risques pour visualiser les indices.',
+              fill: textSecondary,
+              fontSize: 14
+            }
+          }
+        ]
+      }, true);
+      return;
+    }
+
+    const categories = points.map(point => point.name);
+    const initialValues = points.map(point => point.initial);
+    const residualValues = points.map(point => point.residual);
+    const shouldRotate = categories.some(name => (name || '').length > 12);
+
+    risquesScoreChartInstance.setOption({
+      backgroundColor: 'transparent',
+      title: {
+        text: 'Indice de criticité (Initial vs Résiduel)',
+        left: 'center',
+        textStyle: { color: textPrimary, fontSize: 18, fontWeight: 'bold' }
+      },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: (params) => {
+          if (!Array.isArray(params)) return '';
+          const lines = [`<strong>${params[0].axisValue}</strong>`];
+          params.forEach(item => {
+            lines.push(`${item.marker || ''} ${item.seriesName}: ${formatScore(Number(item.data))}`);
+          });
+          return lines.join('<br/>');
+        }
+      },
+      legend: {
+        data: ['Initial', 'Résiduel'],
+        top: 40,
+        textStyle: { color: textSecondary }
+      },
+      grid: { left: 60, right: 30, top: 80, bottom: shouldRotate ? 110 : 80 },
+      xAxis: {
+        type: 'category',
+        data: categories,
+        axisLabel: {
+          color: textSecondary,
+          rotate: shouldRotate ? 20 : 0
+        },
+        axisLine: { lineStyle: { color: textSecondary } },
+        splitLine: { show: false }
+      },
+      yAxis: {
+        type: 'value',
+        axisLabel: { color: textSecondary },
+        axisLine: { lineStyle: { color: textSecondary } },
+        splitLine: { lineStyle: { color: 'rgba(148,163,184,0.2)' } },
+        name: 'Indice',
+        nameTextStyle: { color: textSecondary },
+        min: 0
+      },
+      series: [
+        {
+          name: 'Initial',
+          type: 'bar',
+          data: initialValues,
+          itemStyle: { color: danger },
+          emphasis: { focus: 'series' }
+        },
+        {
+          name: 'Résiduel',
+          type: 'bar',
+          data: residualValues,
+          itemStyle: { color: accent },
+          emphasis: { focus: 'series' }
+        }
+      ],
+      animationDuration: 300
+    }, true);
   }
 
   function bindAtelier5Drag(residualSpread, lineData) {

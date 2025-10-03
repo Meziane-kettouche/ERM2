@@ -115,7 +115,10 @@
         <div id="atelier5-risques-tab" class="atelier5-subtab-content">
           <p>Pour chaque risque identifié dans l’atelier 4, indiquez les actions de traitement, le niveau de vraisemblance actuel et le niveau résiduel souhaité.</p>
           <div class="chart-wrapper">
-            <div id="risques-chart" class="chart-canvas chart-surface" role="img" aria-label="Matrice gravité vraisemblance"></div>
+            <div class="risk-chart-grid">
+              <div id="risques-chart" class="chart-canvas chart-surface" role="img" aria-label="Matrice gravité vraisemblance"></div>
+              <div id="risques-score-chart" class="chart-canvas chart-surface" role="img" aria-label="Indice de criticité des risques (initial vs résiduel)"></div>
+            </div>
           </div>
           <div class="table-container">
             <table id="risques-actions-table" class="data-table">
