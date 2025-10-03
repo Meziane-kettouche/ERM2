@@ -1766,7 +1766,7 @@
         const risk = riskMap.get(id);
         if (!risk) return;
         if (!analysis.data.actionsRisques.some(row => row.riskId === id)) {
-          analysis.data.actionsRisques.push({ riskId: id, riskName: risk.name, residualV: risk.vraisemblance, residualG: risk.gravite, actions: [] });
+          analysis.data.actionsRisques.push({ riskId: id, riskName: risk.name, residualV: 1, residualG: 1, actions: [] });
         }
       });
       saveAnalyses();
