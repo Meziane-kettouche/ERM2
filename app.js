@@ -6133,16 +6133,19 @@
           const gravite = parseLevel(risk.gravite, null);
           const vraisemblance = parseLevel(risk.vraisemblance, null);
           if (gravite === null || vraisemblance === null) return;
-          const idPart = formatRiskIdentifier(risk.indice || risk.id || risk.libelle || risk.titre || risk.name || '');
-          const label = risk.libelle || risk.titre || idPart || risk.name || 'Risque';
+          const rawIdentifier = risk.indice || risk.id || risk.libelle || risk.titre || risk.name || '';
+          const identifier = formatRiskIdentifier(rawIdentifier) || `R${idx + 1}`;
+          const fullName = risk.libelle || risk.titre || risk.name || rawIdentifier || `Risque ${idx + 1}`;
           const description = risk.description || risk.details || risk.detail || '';
           risquesList.push({
-            name: label,
+            name: identifier,
+            identifier,
+            fullName,
             value: [gravite, vraisemblance],
             rawValue: [gravite, vraisemblance],
             description,
-            meta: { type: 'global', riskId: risk.id || idPart || `global-${idx}` },
-            metaKey: `global::${risk.id || idPart || idx}`
+            meta: { type: 'global', riskId: risk.id || rawIdentifier || identifier || `global-${idx}` },
+            metaKey: `global::${risk.id || rawIdentifier || identifier || idx}`
           });
         });
       }
@@ -6155,15 +6158,18 @@
             const gravite = parseLevel(risk.gravite, null);
             const vraisemblance = parseLevel(risk.vraisemblance, null);
             if (gravite === null || vraisemblance === null) return;
-            const idPart = formatRiskIdentifier(risk.id || risk.name || '');
-            const label = risk.name || idPart || 'Risque';
+            const rawIdentifier = risk.id || risk.identifier || risk.code || risk.name || '';
+            const identifier = formatRiskIdentifier(rawIdentifier) || `S${sIdx + 1}-${rIdx + 1}`;
+            const fullName = risk.name || rawIdentifier || `Risque ${rIdx + 1}`;
             const description = risk.description || risk.details || risk.detail || '';
             risquesList.push({
-              name: label,
+              name: identifier,
+              identifier,
+              fullName,
               value: [gravite, vraisemblance],
               rawValue: [gravite, vraisemblance],
               description,
-              meta: { type: 'scenario', scenarioId, riskIndex: rIdx },
+              meta: { type: 'scenario', scenarioId, riskIndex: rIdx, riskId: rawIdentifier || identifier },
               metaKey: `scenario::${scenarioId}::${rIdx}`
             });
           });
@@ -6193,11 +6199,20 @@
         borderColor: accent,
         textStyle: { color: textPrimary },
         formatter: (params) => {
-          const desc = params.data && params.data.description ? `<br/><em>${params.data.description}</em>` : '';
-          const raw = params.data && params.data.rawValue ? params.data.rawValue : params.value;
+          const data = params.data || {};
+          const identifier = data.identifier || params.name || 'Risque';
+          const fullName = data.fullName && data.fullName !== identifier ? data.fullName : '';
+          const desc = data.description ? `<br/><em>${data.description}</em>` : '';
+          const raw = data.rawValue ? data.rawValue : params.value;
           const gravite = raw && raw[0] !== undefined ? raw[0] : params.value[0];
           const vraisemblance = raw && raw[1] !== undefined ? raw[1] : params.value[1];
-          return `<strong>${params.name}</strong>${desc}<br/>Gravité : ${gravite}<br/>Vraisemblance : ${vraisemblance}`;
+          let html = `<strong>${identifier}</strong>`;
+          if (fullName) {
+            html += `<br/>Nom : ${fullName}`;
+          }
+          html += desc;
+          html += `<br/>Gravité : ${gravite}<br/>Vraisemblance : ${vraisemblance}`;
+          return html;
         }
       },
       xAxis: {
@@ -6233,7 +6248,7 @@
           itemStyle: { color: accent },
           label: {
             show: true,
-            formatter: '{b}',
+            formatter: (params) => (params.data && params.data.identifier) ? params.data.identifier : params.name,
             color: textPrimary,
             fontSize: 12,
             position: 'top'
