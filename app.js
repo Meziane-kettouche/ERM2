@@ -5302,13 +5302,14 @@
       return 'En cours';
     };
     const actions = [];
-    const collectAction = (act, source) => {
+    const collectAction = (act, source, sourceCategory = 'Autre') => {
       if (!act) return;
       const progress = clampProgress(act.progress);
       actions.push({
         ref: act,
         name: act.name || '',
         source,
+        sourceCategory,
         description: act.description || '',
         responsable: act.responsable || '',
         start: act.start || '',
@@ -5321,24 +5322,40 @@
     (analysis.data.actionsGap || []).forEach(entry => {
       const source = (analysis.data.gap || []).find(req => req.id === entry.sourceId);
       const sourceName = source ? (source.titre || source.domaine || 'Exigence') : 'Exigence';
-      (entry.actions || []).forEach(act => collectAction(act, 'GAP: ' + sourceName));
+      (entry.actions || []).forEach(act => collectAction(
+        act,
+        'GAP: ' + sourceName,
+        'Conformité (GAP)'
+      ));
     });
     // Support actions
     (analysis.data.actionsSupports || []).forEach(row => {
       const sup = row.supportName || 'Support';
       const vul = row.vulnName ? ` - ${row.vulnName}` : '';
-      (row.actions || []).forEach(act => collectAction(act, 'Support: ' + sup + vul));
+      (row.actions || []).forEach(act => collectAction(
+        act,
+        'Support: ' + sup + vul,
+        'Action support (correction de vulnérabilité)'
+      ));
     });
     // Party actions
     (analysis.data.actionsParties || []).forEach(row => {
       const pp = (analysis.data.ppc || []).find(p => p.id === row.ppId);
       const srcName = pp ? (pp.nom || pp.name || 'Partie') : 'Partie';
-      (row.actions || []).forEach(act => collectAction(act, 'Partie: ' + srcName));
+      (row.actions || []).forEach(act => collectAction(
+        act,
+        'Partie: ' + srcName,
+        'Action PP (sécurité des prestataires)'
+      ));
     });
     // Risk actions
     (analysis.data.actionsRisques || []).forEach(row => {
       const srcName = row.riskName;
-      (row.actions || []).forEach(act => collectAction(act, 'Risque: ' + srcName));
+      (row.actions || []).forEach(act => collectAction(
+        act,
+        'Risque: ' + srcName,
+        'Action risques (couverture des risques)'
+      ));
     });
     // Render table rows
     actions.forEach(act => {
@@ -5512,7 +5529,7 @@
       return {
         progress,
         status: (action && action.status) || 'En cours',
-        source: (action && action.source) || 'Autre'
+        sourceCategory: (action && action.sourceCategory) || 'Autre'
       };
     }) : [];
 
@@ -5527,35 +5544,56 @@
     const globalProgress = hasActions ? round1(average(progressValues)) : 0;
 
     const statuses = ['Non démarré', 'En cours', 'Terminé'];
-    const statusGroups = new Map(statuses.map(status => [status, []]));
+    const statusGroups = new Map(statuses.map(status => [status, 0]));
     normalizedActions.forEach(action => {
       const key = statusGroups.has(action.status) ? action.status : 'En cours';
-      statusGroups.get(key).push(action.progress);
+      statusGroups.set(key, statusGroups.get(key) + 1);
     });
-    const statusSeriesData = statuses.map(status => round1(average(statusGroups.get(status))));
+    const statusSeriesData = statuses.map(status => statusGroups.get(status));
+    const totalStatusCount = statusSeriesData.reduce((sum, value) => sum + value, 0);
 
-    const sourceGroups = new Map();
+    const predefinedSourceLabels = [
+      'Conformité (GAP)',
+      'Action support (correction de vulnérabilité)',
+      'Action risques (couverture des risques)',
+      'Action PP (sécurité des prestataires)'
+    ];
+    const sourceGroups = new Map(predefinedSourceLabels.map(label => [label, []]));
     normalizedActions.forEach(action => {
-      const key = action.source || 'Autre';
+      const key = sourceGroups.has(action.sourceCategory) ? action.sourceCategory : 'Autre';
       if (!sourceGroups.has(key)) sourceGroups.set(key, []);
       sourceGroups.get(key).push(action.progress);
     });
-    const sourceLabels = Array.from(sourceGroups.keys()).sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
-    const sourceSeriesData = sourceLabels.map(label => round1(average(sourceGroups.get(label))));
-    const hasSources = sourceLabels.length > 0;
-    const displaySourceLabels = hasSources ? sourceLabels : ['Aucune action'];
-    const displaySourceData = hasSources ? sourceSeriesData : [0];
+    const extraLabels = Array.from(sourceGroups.keys()).filter(label => !predefinedSourceLabels.includes(label));
+    const orderedSourceLabels = [...predefinedSourceLabels, ...extraLabels];
+    const hasSources = orderedSourceLabels.some(label => (sourceGroups.get(label) || []).length > 0);
+    const displaySourceLabels = hasSources ? orderedSourceLabels : predefinedSourceLabels;
+    const displaySourceData = displaySourceLabels.map(label => {
+      const values = sourceGroups.get(label) || [];
+      return values.length ? round1(average(values)) : 0;
+    });
 
     const accent = getCssVar('--accent', '#4da3ff');
     const accentDim = getCssVar('--accent-dim', '#3c85cc');
     const textPrimary = getCssVar('--text-primary', '#e6e9ef');
     const textSecondary = getCssVar('--text-secondary', '#8aa0c4');
-    const formatTooltip = (params) => {
+    const formatStatusTooltip = (params) => {
       if (!params) return '';
       const list = Array.isArray(params) ? params : [params];
       return list.map(item => {
         const label = item.axisValueLabel || item.axisValue || item.name || '';
-        return `${item.marker || ''}${label}: ${item.value}%`;
+        const value = Number(item.value) || 0;
+        const ratio = totalStatusCount ? round1((value / totalStatusCount) * 100) : 0;
+        return `${item.marker || ''}${label}: ${value} action${value > 1 ? 's' : ''} (${ratio}%)`;
+      }).join('<br/>');
+    };
+    const formatSourceTooltip = (params) => {
+      if (!params) return '';
+      const list = Array.isArray(params) ? params : [params];
+      return list.map(item => {
+        const label = item.axisValueLabel || item.axisValue || item.name || '';
+        const value = round1(Number(item.value) || 0);
+        return `${item.marker || ''}${label}: ${value}%`;
       }).join('<br/>');
     };
 
@@ -5605,11 +5643,11 @@
     planStatusChartInstance.setOption({
       backgroundColor: 'transparent',
       title: {
-        text: "Avancement moyen par statut (%)",
+        text: "Répartition des mesures par statut",
         left: 'center',
         textStyle: { color: textPrimary, fontSize: 16, fontWeight: 'bold' }
       },
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: formatTooltip },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: formatStatusTooltip },
       grid: { left: 50, right: 24, top: 70, bottom: 60 },
       xAxis: {
         type: 'category',
@@ -5620,8 +5658,7 @@
       yAxis: {
         type: 'value',
         min: 0,
-        max: 100,
-        axisLabel: { formatter: '{value}%', color: textSecondary },
+        axisLabel: { formatter: '{value}', color: textSecondary },
         axisLine: { lineStyle: { color: textSecondary } },
         splitLine: { lineStyle: { color: 'rgba(148,163,184,0.25)' } }
       },
@@ -5630,7 +5667,7 @@
           type: 'bar',
           data: statusSeriesData,
           itemStyle: { color: accent },
-          label: { show: true, formatter: '{c}%', color: textPrimary, fontSize: 12 }
+          label: { show: true, formatter: '{c}', color: textPrimary, fontSize: 12 }
         }
       ],
       graphic: hasActions ? [] : [
@@ -5651,11 +5688,11 @@
     planSourceChartInstance.setOption({
       backgroundColor: 'transparent',
       title: {
-        text: "Avancement moyen par source (%)",
+        text: "Taux d'avancement par source (%)",
         left: 'center',
         textStyle: { color: textPrimary, fontSize: 16, fontWeight: 'bold' }
       },
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: formatTooltip },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: formatSourceTooltip },
       grid: { left: 55, right: 28, top: 70, bottom: rotateLabels ? 90 : 70 },
       xAxis: {
         type: 'category',
