@@ -3763,7 +3763,7 @@
       addBtn.className = 'add-assoc-btn';
       addBtn.textContent = '+ Action';
       addBtn.addEventListener('click', () => {
-        entry.actions.push({ name:'', description:'', responsable:'', start:'', end:'' });
+        entry.actions.push({ name:'', description:'', responsable:'', start:'', end:'', progress: 0 });
         saveAnalyses();
         renderGapActions();
         renderPlanActions();
@@ -3792,7 +3792,11 @@
         if (input === null) return;
         const index = parseInt(input,10) - 1;
         if (!isNaN(index) && index >=0 && index < available.length) {
-          entry.actions.push(Object.assign({}, available[index]));
+          const cloned = Object.assign({}, available[index]);
+          if (typeof cloned.progress !== 'number' || !Number.isFinite(cloned.progress)) {
+            cloned.progress = 0;
+          }
+          entry.actions.push(cloned);
           saveAnalyses();
           renderGapActions();
           renderPlanActions();
@@ -4010,7 +4014,7 @@
       addBtnA.className = 'add-assoc-btn';
       addBtnA.textContent = '+ Action';
       addBtnA.addEventListener('click', () => {
-        row.actions.push({ name:'', description:'', responsable:'', start:'', end:'' });
+        row.actions.push({ name:'', description:'', responsable:'', start:'', end:'', progress: 0 });
         saveAnalyses();
         renderSupportActions();
         renderPlanActions();
@@ -4039,7 +4043,11 @@
         if (input === null) return;
         const index = parseInt(input,10) - 1;
         if (!isNaN(index) && index >=0 && index < available.length) {
-          row.actions.push(Object.assign({}, available[index]));
+          const cloned = Object.assign({}, available[index]);
+          if (typeof cloned.progress !== 'number' || !Number.isFinite(cloned.progress)) {
+            cloned.progress = 0;
+          }
+          row.actions.push(cloned);
           saveAnalyses();
           renderSupportActions();
           renderPlanActions();
@@ -4219,7 +4227,7 @@
       addBtnA.className = 'add-assoc-btn';
       addBtnA.textContent = '+ Action';
       addBtnA.addEventListener('click', () => {
-        row.actions.push({ name:'', description:'', responsable:'', start:'', end:'' });
+        row.actions.push({ name:'', description:'', responsable:'', start:'', end:'', progress: 0 });
         saveAnalyses();
         renderPartiesActions();
         renderPlanActions();
@@ -4248,7 +4256,11 @@
         if (input === null) return;
         const index = parseInt(input,10) - 1;
         if (!isNaN(index) && index >=0 && index < available.length) {
-          row.actions.push(Object.assign({}, available[index]));
+          const cloned = Object.assign({}, available[index]);
+          if (typeof cloned.progress !== 'number' || !Number.isFinite(cloned.progress)) {
+            cloned.progress = 0;
+          }
+          row.actions.push(cloned);
           saveAnalyses();
           renderPartiesActions();
           renderPlanActions();
@@ -5194,7 +5206,7 @@
       addBtnA.className = 'add-assoc-btn';
       addBtnA.textContent = '+ Action';
       addBtnA.addEventListener('click', () => {
-        row.actions.push({ name:'', description:'', responsable:'', start:'', end:'' });
+        row.actions.push({ name:'', description:'', responsable:'', start:'', end:'', progress: 0 });
         saveAnalyses();
         renderRisquesActions();
         renderPlanActions();
@@ -5223,7 +5235,11 @@
         if (input === null) return;
         const index = parseInt(input,10) - 1;
         if (!isNaN(index) && index >=0 && index < available.length) {
-          row.actions.push(Object.assign({}, available[index]));
+          const cloned = Object.assign({}, available[index]);
+          if (typeof cloned.progress !== 'number' || !Number.isFinite(cloned.progress)) {
+            cloned.progress = 0;
+          }
+          row.actions.push(cloned);
           saveAnalyses();
           renderRisquesActions();
           renderPlanActions();
@@ -5262,73 +5278,102 @@
     body.innerHTML = '';
     const analysis = analyses[currentIndex];
     if (!analysis || !analysis.data) return;
+    const clampProgress = (value) => {
+      const num = Number(value);
+      if (!Number.isFinite(num)) return 0;
+      return Math.min(100, Math.max(0, Math.round(num)));
+    };
+    const getActionStatus = (progress) => {
+      if (progress >= 100) return 'Terminé';
+      if (progress <= 0) return 'Non démarré';
+      return 'En cours';
+    };
     const actions = [];
+    const collectAction = (act, source) => {
+      if (!act) return;
+      const progress = clampProgress(act.progress);
+      actions.push({
+        ref: act,
+        name: act.name || '',
+        source,
+        description: act.description || '',
+        responsable: act.responsable || '',
+        start: act.start || '',
+        end: act.end || '',
+        progress,
+        status: getActionStatus(progress)
+      });
+    };
     // Gap actions
     (analysis.data.actionsGap || []).forEach(entry => {
       const source = (analysis.data.gap || []).find(req => req.id === entry.sourceId);
       const sourceName = source ? (source.titre || source.domaine || 'Exigence') : 'Exigence';
-      (entry.actions || []).forEach(act => {
-        actions.push({
-          name: act.name,
-          source: 'GAP: ' + sourceName,
-          description: act.description || '',
-          responsable: act.responsable || '',
-          start: act.start || '',
-          end: act.end || ''
-        });
-      });
+      (entry.actions || []).forEach(act => collectAction(act, 'GAP: ' + sourceName));
     });
     // Support actions
     (analysis.data.actionsSupports || []).forEach(row => {
       const sup = row.supportName || 'Support';
       const vul = row.vulnName ? ` - ${row.vulnName}` : '';
-      (row.actions || []).forEach(act => {
-        actions.push({
-          name: act.name,
-          source: 'Support: ' + sup + vul,
-          description: act.description || '',
-          responsable: act.responsable || '',
-          start: act.start || '',
-          end: act.end || ''
-        });
-      });
+      (row.actions || []).forEach(act => collectAction(act, 'Support: ' + sup + vul));
     });
     // Party actions
     (analysis.data.actionsParties || []).forEach(row => {
       const pp = (analysis.data.ppc || []).find(p => p.id === row.ppId);
       const srcName = pp ? (pp.nom || pp.name || 'Partie') : 'Partie';
-      (row.actions || []).forEach(act => {
-        actions.push({
-          name: act.name,
-          source: 'Partie: ' + srcName,
-          description: act.description || '',
-          responsable: act.responsable || '',
-          start: act.start || '',
-          end: act.end || ''
-        });
-      });
+      (row.actions || []).forEach(act => collectAction(act, 'Partie: ' + srcName));
     });
     // Risk actions
     (analysis.data.actionsRisques || []).forEach(row => {
       const srcName = row.riskName;
-      (row.actions || []).forEach(act => {
-        actions.push({
-          name: act.name,
-          source: 'Risque: ' + srcName,
-          description: act.description || '',
-          responsable: act.responsable || '',
-          start: act.start || '',
-          end: act.end || ''
-        });
-      });
+      (row.actions || []).forEach(act => collectAction(act, 'Risque: ' + srcName));
     });
     // Render table rows
     actions.forEach(act => {
       const tr = document.createElement('tr');
-      ['name','source','description','responsable','start','end'].forEach(key => {
+      const addTextCell = (value) => {
         const td = document.createElement('td');
-        td.textContent = act[key] || '';
+        td.textContent = value || '';
         tr.appendChild(td);
+      };
+      addTextCell(act.name);
+      addTextCell(act.source);
+      addTextCell(act.description);
+      addTextCell(act.responsable);
+      addTextCell(act.start);
+      addTextCell(act.end);
+      const progressTd = document.createElement('td');
+      const progressWrapper = document.createElement('div');
+      progressWrapper.className = 'progress-control';
+      const range = document.createElement('input');
+      range.type = 'range';
+      range.min = '0';
+      range.max = '100';
+      range.value = String(act.progress);
+      range.setAttribute('aria-label', `Avancement de ${act.name || "l'action"}`);
+      const valueLabel = document.createElement('span');
+      valueLabel.className = 'progress-value';
+      valueLabel.textContent = `${act.progress}%`;
+      progressWrapper.append(range, valueLabel);
+      progressTd.appendChild(progressWrapper);
+      tr.appendChild(progressTd);
+      const statusTd = document.createElement('td');
+      statusTd.textContent = act.status;
+      tr.appendChild(statusTd);
+      const updateFromRange = (val) => {
+        const clamped = clampProgress(val);
+        valueLabel.textContent = `${clamped}%`;
+        statusTd.textContent = getActionStatus(clamped);
+        act.progress = clamped;
+        if (act.ref) {
+          act.ref.progress = clamped;
+        }
+      };
+      range.addEventListener('input', (e) => {
+        updateFromRange(e.target.value);
+      });
+      range.addEventListener('change', (e) => {
+        updateFromRange(e.target.value);
+        saveAnalyses();
       });
       body.appendChild(tr);
     });
