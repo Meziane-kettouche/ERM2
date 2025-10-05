@@ -115,7 +115,7 @@
         <div id="atelier5-risques-tab" class="atelier5-subtab-content">
           <p>Pour chaque risque identifié dans l’atelier 4, indiquez les actions de traitement, le niveau de vraisemblance actuel et le niveau résiduel souhaité.</p>
           <div class="chart-wrapper">
-            <div class="risk-chart-carousel" data-active-index="0">
+            <div class="chart-carousel risk-chart-carousel" data-active-index="0">
               <div class="carousel-track">
                 <div id="risques-chart" class="chart-canvas chart-surface is-active" role="img" aria-label="Matrice gravité vraisemblance" aria-hidden="false"></div>
                 <div id="risques-score-chart" class="chart-canvas chart-surface" role="img" aria-label="Indice de criticité des risques (initial vs résiduel)" aria-hidden="true"></div>
@@ -149,6 +149,21 @@
         </div>
         <div id="atelier5-plan-tab" class="atelier5-subtab-content">
           <p>Vue consolidée de toutes les actions définies. Le diagramme de Gantt ci-dessous permet de visualiser les périodes de mise en œuvre.</p>
+          <div class="chart-wrapper plan-metrics">
+            <p class="plan-carousel-description">Parcourez les indicateurs pour suivre l’état global du plan d’action.</p>
+            <div id="plan-chart-carousel" class="chart-carousel" data-active-index="0">
+              <div class="carousel-track">
+                <div id="plan-gauge-chart" class="chart-canvas chart-surface is-active" role="img" aria-label="Jauge d'avancement global" aria-hidden="false"></div>
+                <div id="plan-status-chart" class="chart-canvas chart-surface" role="img" aria-label="Diagramme en barres : avancement moyen par statut" aria-hidden="true"></div>
+                <div id="plan-source-chart" class="chart-canvas chart-surface" role="img" aria-label="Diagramme en barres : avancement moyen par source" aria-hidden="true"></div>
+              </div>
+              <div class="carousel-dots" role="tablist" aria-label="Indicateurs du plan d'action">
+                <button type="button" class="carousel-dot active" data-target="0" aria-label="Afficher la jauge d'avancement global" aria-controls="plan-gauge-chart" aria-pressed="true"></button>
+                <button type="button" class="carousel-dot" data-target="1" aria-label="Afficher la répartition par statut" aria-controls="plan-status-chart" aria-pressed="false"></button>
+                <button type="button" class="carousel-dot" data-target="2" aria-label="Afficher la répartition par source" aria-controls="plan-source-chart" aria-pressed="false"></button>
+              </div>
+            </div>
+          </div>
           <div class="wrap">
             <div class="card">
               <div class="controls">
