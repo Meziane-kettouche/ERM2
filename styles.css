@@ -697,19 +697,19 @@ input[type="text"]:focus, input[type="number"]:focus, textarea:focus {
   position: relative;
 }
 
-.risk-chart-carousel {
+.chart-carousel {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 0.75rem;
 }
 
-.risk-chart-carousel .carousel-track {
+.chart-carousel .carousel-track {
   position: relative;
   min-height: 360px;
 }
 
-.risk-chart-carousel .chart-canvas {
+.chart-carousel .chart-canvas {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -721,12 +721,12 @@ input[type="text"]:focus, input[type="number"]:focus, textarea:focus {
   transition: opacity 0.25s ease;
 }
 
-.risk-chart-carousel .chart-canvas.is-active {
+.chart-carousel .chart-canvas.is-active {
   opacity: 1;
   visibility: visible;
 }
 
-.risk-chart-carousel .chart-surface {
+.chart-carousel .chart-surface {
   min-height: 360px;
 }
 
@@ -751,6 +751,13 @@ input[type="text"]:focus, input[type="number"]:focus, textarea:focus {
   background-color: var(--accent);
   transform: scale(1.15);
   outline: none;
+}
+
+.plan-carousel-description {
+  margin: 0 0 0.5rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.95rem;
 }
 
 #atelier3-chart-container-top.stakeholder-wrapper {

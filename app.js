@@ -18,9 +18,13 @@
   let atelier4ChartInstance;
   let risquesChartInstance;
   let risquesScoreChartInstance;
+  let planGaugeChartInstance;
+  let planStatusChartInstance;
+  let planSourceChartInstance;
   let atelier4DragHandlers = null;
   let atelier5DragHandlers = null;
   let riskChartCarouselIndex = 0;
+  let planChartCarouselIndex = 0;
 
   if (typeof window !== 'undefined') {
     window.addEventListener('resize', () => {
@@ -32,6 +36,15 @@
       }
       if (risquesScoreChartInstance) {
         risquesScoreChartInstance.resize();
+      }
+      if (planGaugeChartInstance) {
+        planGaugeChartInstance.resize();
+      }
+      if (planStatusChartInstance) {
+        planStatusChartInstance.resize();
+      }
+      if (planSourceChartInstance) {
+        planSourceChartInstance.resize();
       }
     });
   }
@@ -5382,6 +5395,305 @@
     if (typeof drawGanttChartSVG === 'function') {
       drawGanttChartSVG(chartEl, actions);
     }
+    renderPlanCharts(actions);
+  }
+
+  function updatePlanChartCarousel(index) {
+    const carousel = document.getElementById('plan-chart-carousel');
+    if (!carousel) return;
+    const slides = carousel.querySelectorAll('.carousel-track .chart-canvas');
+    const dots = carousel.querySelectorAll('.carousel-dot');
+    if (!slides.length) return;
+    const maxIndex = slides.length - 1;
+    const targetIndex = Math.max(0, Math.min(index, maxIndex));
+    planChartCarouselIndex = targetIndex;
+    slides.forEach((slide, idx) => {
+      const isActive = idx === targetIndex;
+      slide.classList.toggle('is-active', isActive);
+      slide.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+      if (isActive) {
+        if (slide.id === 'plan-gauge-chart' && planGaugeChartInstance) {
+          planGaugeChartInstance.resize();
+        }
+        if (slide.id === 'plan-status-chart' && planStatusChartInstance) {
+          planStatusChartInstance.resize();
+        }
+        if (slide.id === 'plan-source-chart' && planSourceChartInstance) {
+          planSourceChartInstance.resize();
+        }
+      }
+    });
+    dots.forEach((dot, idx) => {
+      const isActive = idx === targetIndex;
+      dot.classList.toggle('active', isActive);
+      dot.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+  }
+
+  function setupPlanChartCarousel() {
+    const carousel = document.getElementById('plan-chart-carousel');
+    if (!carousel) return;
+    if (carousel.dataset.initialized === 'true') {
+      updatePlanChartCarousel(planChartCarouselIndex);
+      return;
+    }
+    const dots = carousel.querySelectorAll('.carousel-dot');
+    dots.forEach(dot => {
+      const targetIndex = Number(dot.getAttribute('data-target'));
+      const activate = () => {
+        if (!Number.isNaN(targetIndex)) {
+          updatePlanChartCarousel(targetIndex);
+        }
+      };
+      dot.addEventListener('click', activate);
+      dot.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          activate();
+        }
+      });
+    });
+    carousel.dataset.initialized = 'true';
+    updatePlanChartCarousel(planChartCarouselIndex);
+  }
+
+  function renderPlanCharts(actions) {
+    const carousel = document.getElementById('plan-chart-carousel');
+    const gaugeEl = document.getElementById('plan-gauge-chart');
+    const statusEl = document.getElementById('plan-status-chart');
+    const sourceEl = document.getElementById('plan-source-chart');
+    if (!carousel || !gaugeEl || !statusEl || !sourceEl) {
+      planChartCarouselIndex = 0;
+      if (planGaugeChartInstance) {
+        planGaugeChartInstance.dispose();
+        planGaugeChartInstance = null;
+      }
+      if (planStatusChartInstance) {
+        planStatusChartInstance.dispose();
+        planStatusChartInstance = null;
+      }
+      if (planSourceChartInstance) {
+        planSourceChartInstance.dispose();
+        planSourceChartInstance = null;
+      }
+      return;
+    }
+    if (typeof echarts === 'undefined') return;
+
+    setupPlanChartCarousel();
+
+    if (planGaugeChartInstance && planGaugeChartInstance.getDom() !== gaugeEl) {
+      planGaugeChartInstance.dispose();
+      planGaugeChartInstance = null;
+    }
+    if (!planGaugeChartInstance) {
+      planGaugeChartInstance = echarts.init(gaugeEl);
+    }
+
+    if (planStatusChartInstance && planStatusChartInstance.getDom() !== statusEl) {
+      planStatusChartInstance.dispose();
+      planStatusChartInstance = null;
+    }
+    if (!planStatusChartInstance) {
+      planStatusChartInstance = echarts.init(statusEl);
+    }
+
+    if (planSourceChartInstance && planSourceChartInstance.getDom() !== sourceEl) {
+      planSourceChartInstance.dispose();
+      planSourceChartInstance = null;
+    }
+    if (!planSourceChartInstance) {
+      planSourceChartInstance = echarts.init(sourceEl);
+    }
+
+    const normalizedActions = Array.isArray(actions) ? actions.map(action => {
+      const progressValue = Number(action && action.progress);
+      const progress = Number.isFinite(progressValue) ? Math.max(0, Math.min(100, progressValue)) : 0;
+      return {
+        progress,
+        status: (action && action.status) || 'En cours',
+        source: (action && action.source) || 'Autre'
+      };
+    }) : [];
+
+    const average = (arr) => {
+      if (!arr.length) return 0;
+      return arr.reduce((sum, value) => sum + value, 0) / arr.length;
+    };
+    const round1 = (value) => Math.round(value * 10) / 10;
+
+    const hasActions = normalizedActions.length > 0;
+    const progressValues = normalizedActions.map(action => action.progress);
+    const globalProgress = hasActions ? round1(average(progressValues)) : 0;
+
+    const statuses = ['Non démarré', 'En cours', 'Terminé'];
+    const statusGroups = new Map(statuses.map(status => [status, []]));
+    normalizedActions.forEach(action => {
+      const key = statusGroups.has(action.status) ? action.status : 'En cours';
+      statusGroups.get(key).push(action.progress);
+    });
+    const statusSeriesData = statuses.map(status => round1(average(statusGroups.get(status))));
+
+    const sourceGroups = new Map();
+    normalizedActions.forEach(action => {
+      const key = action.source || 'Autre';
+      if (!sourceGroups.has(key)) sourceGroups.set(key, []);
+      sourceGroups.get(key).push(action.progress);
+    });
+    const sourceLabels = Array.from(sourceGroups.keys()).sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
+    const sourceSeriesData = sourceLabels.map(label => round1(average(sourceGroups.get(label))));
+    const hasSources = sourceLabels.length > 0;
+    const displaySourceLabels = hasSources ? sourceLabels : ['Aucune action'];
+    const displaySourceData = hasSources ? sourceSeriesData : [0];
+
+    const accent = getCssVar('--accent', '#4da3ff');
+    const accentDim = getCssVar('--accent-dim', '#3c85cc');
+    const textPrimary = getCssVar('--text-primary', '#e6e9ef');
+    const textSecondary = getCssVar('--text-secondary', '#8aa0c4');
+    const formatTooltip = (params) => {
+      if (!params) return '';
+      const list = Array.isArray(params) ? params : [params];
+      return list.map(item => {
+        const label = item.axisValueLabel || item.axisValue || item.name || '';
+        return `${item.marker || ''}${label}: ${item.value}%`;
+      }).join('<br/>');
+    };
+
+    planGaugeChartInstance.setOption({
+      backgroundColor: 'transparent',
+      title: {
+        text: "Avancement global",
+        left: 'center',
+        textStyle: { color: textPrimary, fontSize: 18, fontWeight: 'bold' }
+      },
+      tooltip: { formatter: '{c}%' },
+      series: [
+        {
+          type: 'gauge',
+          min: 0,
+          max: 100,
+          progress: { show: true, width: 18, itemStyle: { color: accent } },
+          axisLine: { lineStyle: { width: 18, color: [[1, accentDim]] } },
+          axisTick: { show: false },
+          splitLine: { show: false },
+          axisLabel: { color: textSecondary, fontSize: 12 },
+          pointer: { show: true, length: '70%', width: 6 },
+          detail: {
+            valueAnimation: true,
+            formatter: '{value}%',
+            fontSize: 26,
+            color: textPrimary,
+            offsetCenter: [0, '65%']
+          },
+          data: [{ value: globalProgress }]
+        }
+      ],
+      graphic: hasActions ? [] : [
+        {
+          type: 'text',
+          left: 'center',
+          top: '68%',
+          style: {
+            text: "Ajoutez des actions pour afficher la jauge",
+            fill: textSecondary,
+            fontSize: 13
+          }
+        }
+      ]
+    }, true);
+
+    planStatusChartInstance.setOption({
+      backgroundColor: 'transparent',
+      title: {
+        text: "Avancement moyen par statut (%)",
+        left: 'center',
+        textStyle: { color: textPrimary, fontSize: 16, fontWeight: 'bold' }
+      },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: formatTooltip },
+      grid: { left: 50, right: 24, top: 70, bottom: 60 },
+      xAxis: {
+        type: 'category',
+        data: statuses,
+        axisLabel: { color: textSecondary },
+        axisLine: { lineStyle: { color: textSecondary } }
+      },
+      yAxis: {
+        type: 'value',
+        min: 0,
+        max: 100,
+        axisLabel: { formatter: '{value}%', color: textSecondary },
+        axisLine: { lineStyle: { color: textSecondary } },
+        splitLine: { lineStyle: { color: 'rgba(148,163,184,0.25)' } }
+      },
+      series: [
+        {
+          type: 'bar',
+          data: statusSeriesData,
+          itemStyle: { color: accent },
+          label: { show: true, formatter: '{c}%', color: textPrimary, fontSize: 12 }
+        }
+      ],
+      graphic: hasActions ? [] : [
+        {
+          type: 'text',
+          left: 'center',
+          top: 'middle',
+          style: {
+            text: "Aucune action n'est encore planifiée",
+            fill: textSecondary,
+            fontSize: 14
+          }
+        }
+      ]
+    }, true);
+
+    const rotateLabels = displaySourceLabels.some(label => label.length > 16) ? 20 : 0;
+    planSourceChartInstance.setOption({
+      backgroundColor: 'transparent',
+      title: {
+        text: "Avancement moyen par source (%)",
+        left: 'center',
+        textStyle: { color: textPrimary, fontSize: 16, fontWeight: 'bold' }
+      },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: formatTooltip },
+      grid: { left: 55, right: 28, top: 70, bottom: rotateLabels ? 90 : 70 },
+      xAxis: {
+        type: 'category',
+        data: displaySourceLabels,
+        axisLabel: { color: textSecondary, interval: 0, rotate: rotateLabels },
+        axisLine: { lineStyle: { color: textSecondary } }
+      },
+      yAxis: {
+        type: 'value',
+        min: 0,
+        max: 100,
+        axisLabel: { formatter: '{value}%', color: textSecondary },
+        axisLine: { lineStyle: { color: textSecondary } },
+        splitLine: { lineStyle: { color: 'rgba(148,163,184,0.25)' } }
+      },
+      series: [
+        {
+          type: 'bar',
+          data: displaySourceData,
+          itemStyle: { color: accentDim },
+          label: { show: true, formatter: '{c}%', color: textPrimary, fontSize: 12 }
+        }
+      ],
+      graphic: hasActions ? [] : [
+        {
+          type: 'text',
+          left: 'center',
+          top: 'middle',
+          style: {
+            text: "Ajoutez des actions pour comparer les sources",
+            fill: textSecondary,
+            fontSize: 14
+          }
+        }
+      ]
+    }, true);
+
+    updatePlanChartCarousel(planChartCarouselIndex);
   }
 
   // ----- Chart drawing functions (simple bar and radar charts)
