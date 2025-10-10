@@ -2912,8 +2912,10 @@
       if (coordCell) {
         const zone = threatZoneMeta(indice);
         const typeInfo = stakeholderTypeInfo(entry.categorie);
-        const angle = typeInfo.angleDeg;
-        coordCell.textContent = `${zone.label} – ${angle}°`;
+        const fallbackAngle = typeInfo.centerDeg;
+        const rawAngle = Number.isFinite(entry.angle) ? entry.angle : fallbackAngle;
+        const angle = ((rawAngle % 360) + 360) % 360;
+        coordCell.textContent = `${zone.label} – ${Math.round(angle)}°`;
         entry.rayon = stakeholderRadius(indice);
         entry.angle = angle;
         entry.zoneMenace = zone.key;
@@ -6194,37 +6196,54 @@
     return Math.max(0.25, 2.5 - clamped * 0.6);
   }
 
+  const STAKEHOLDER_SECTORS = {
+    partenaire: { key: 'partenaire', label: 'Partenaire', centerDeg: 30, spreadDeg: 70, paddingDeg: 6 },
+    beneficiaire: { key: 'beneficiaire', label: 'Bénéficiaire', centerDeg: 150, spreadDeg: 70, paddingDeg: 6 },
+    prestataire: { key: 'prestataire', label: 'Prestataire', centerDeg: 225, spreadDeg: 70, paddingDeg: 6 },
+    interne: { key: 'interne', label: 'Interne / Autre', centerDeg: 315, spreadDeg: 70, paddingDeg: 6 }
+  };
+
   function stakeholderTypeInfo(categorie) {
     const raw = (categorie || '').toString().trim().toLowerCase();
+    let key;
+    let matched = true;
     switch (raw) {
       case 'partenaire':
       case 'partenaires':
-        return { label: 'Partenaire', angleDeg: 30 };
+        key = 'partenaire';
+        break;
       case 'beneficiaire':
       case 'bénéficiaire':
       case 'beneficiaires':
       case 'bénéficiaires':
       case 'client':
       case 'clients':
-        return { label: 'Bénéficiaire', angleDeg: 150 };
+        key = 'beneficiaire';
+        break;
       case 'prestataire':
       case 'prestataires':
       case 'fournisseur':
       case 'fournisseurs':
-        return { label: 'Prestataire', angleDeg: 225 };
+        key = 'prestataire';
+        break;
       case 'interne':
       case 'internes':
       case 'autorite':
       case 'autorité':
       case 'autre':
       case 'autres':
-        return { label: 'Interne / Autre', angleDeg: 315 };
+        key = 'interne';
+        break;
       default:
-        if (raw) {
-          return { label: categorie, angleDeg: 315 };
-        }
-        return { label: 'Interne / Autre', angleDeg: 315 };
+        key = 'interne';
+        matched = false;
+        break;
     }
+    const sector = STAKEHOLDER_SECTORS[key] || STAKEHOLDER_SECTORS.interne;
+    if (raw && !matched) {
+      return { ...sector, label: categorie };
+    }
+    return { ...sector };
   }
 
   function stakeholderPolarToXY(radius, angleDeg, jitterSeed) {
@@ -6285,7 +6304,7 @@
     const { ctx, width, height } = canvasInfo;
     hideStakeholderTooltip();
 
-    const records = (ppc || []).map((item, index) => {
+    const prepared = (ppc || []).map((item, index) => {
       const dep = parseInt(item.dependance, 10) || 1;
       const pen = parseInt(item.penetration, 10) || 1;
       const mat = parseInt(item.maturite, 10) || 1;
@@ -6308,27 +6327,90 @@
       const zone = threatZoneMeta(indice);
       const typeInfo = stakeholderTypeInfo(item.categorie);
       const radius = stakeholderRadius(indice);
-      const coords = stakeholderPolarToXY(radius, typeInfo.angleDeg, index + exposition + fiabilite);
       const displayName = (item.nom && item.nom.trim()) ? item.nom.trim() : 'Partie prenante';
+      const color = stakeholderColorByFiabilite(fiabilite);
+      const size = stakeholderSizeByExposition(exposition);
 
       item.exposition = exposition;
       item.fiabilite = fiabilite;
       item.indiceMenace = indice;
       item.zoneMenace = zone.key;
-      item.angle = typeInfo.angleDeg;
       item.rayon = radius;
 
       return {
+        source: item,
+        index,
         nom: displayName,
-        type: typeInfo.label,
-        coords,
+        typeInfo,
         exposition,
         fiabilite,
         indice,
         zone,
-        color: stakeholderColorByFiabilite(fiabilite),
-        size: stakeholderSizeByExposition(exposition)
+        radius,
+        color,
+        size,
+        jitterSeed: index + exposition + fiabilite
       };
+    });
+
+    const sectorGroups = new Map();
+    prepared.forEach(entry => {
+      const key = entry.typeInfo.key || 'interne';
+      if (!sectorGroups.has(key)) {
+        sectorGroups.set(key, []);
+      }
+      sectorGroups.get(key).push(entry);
+    });
+
+    sectorGroups.forEach(entries => {
+      if (!entries.length) return;
+      const sector = entries[0].typeInfo;
+      const count = entries.length;
+      const spread = Math.max(0, sector.spreadDeg || 0);
+      const padding = Math.min(sector.paddingDeg || 0, spread / 2);
+      const usableSpread = Math.max(0, spread - padding * 2);
+      if (count === 1 || usableSpread <= 0) {
+        entries.forEach(entry => {
+          entry.angleDeg = sector.centerDeg;
+        });
+        return;
+      }
+      const start = sector.centerDeg - usableSpread / 2;
+      const step = usableSpread / (count - 1);
+      entries.forEach((entry, idx) => {
+        entry.angleDeg = start + step * idx;
+      });
+    });
+
+    const records = prepared.map(entry => {
+      const rawAngle = Number.isFinite(entry.angleDeg) ? entry.angleDeg : entry.typeInfo.centerDeg;
+      const angle = ((rawAngle % 360) + 360) % 360;
+      const coords = stakeholderPolarToXY(entry.radius, angle, entry.jitterSeed);
+      entry.coords = coords;
+      entry.source.angle = angle;
+      entry.source.zoneMenace = entry.zone.key;
+      return {
+        nom: entry.nom,
+        type: entry.typeInfo.label,
+        coords,
+        exposition: entry.exposition,
+        fiabilite: entry.fiabilite,
+        indice: entry.indice,
+        zone: entry.zone,
+        color: entry.color,
+        size: entry.size
+      };
+    });
+
+    const rows = document.querySelectorAll('#ppc-body tr');
+    prepared.forEach((entry, idx) => {
+      const row = rows[idx];
+      if (!row) return;
+      const cell = row.querySelector('.coord-cell');
+      if (!cell) return;
+      const rawAngle = Number.isFinite(entry.angleDeg) ? entry.angleDeg : entry.typeInfo.centerDeg;
+      const angle = ((rawAngle % 360) + 360) % 360;
+      cell.textContent = `${entry.zone.label} – ${Math.round(angle)}°`;
     });
 
     ctx.clearRect(0, 0, width, height);
