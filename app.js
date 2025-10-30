@@ -7455,8 +7455,20 @@
             }
             img.width = c.width;
             img.height = c.height;
-            img.className = c.className;
-            img.style.cssText = c.style.cssText;
+            const classNames = (c.className || '').trim().split(/\s+/).filter(Boolean);
+            if (!classNames.includes('is-active')) {
+              classNames.push('is-active');
+            }
+            img.className = classNames.join(' ');
+            img.style.cssText = c.style.cssText || '';
+            // Ensure charts copied from carousels remain visible in the report
+            img.style.opacity = '1';
+            img.style.visibility = 'visible';
+            if (classNames.includes('chart-canvas')) {
+              img.style.position = 'static';
+              if (!img.style.width) img.style.width = '100%';
+              img.style.marginBottom = '1rem';
+            }
             c.parentNode.replaceChild(img, c);
           });
           const section = doc.querySelector('section.tab-content');
@@ -7469,6 +7481,19 @@
               div.style.display = 'block';
               div.classList.remove('active');
             });
+            // Expand chart carousels so every slide is visible in the printed report
+            imported.querySelectorAll('.chart-carousel .carousel-track').forEach(track => {
+              track.style.position = 'static';
+              track.style.display = 'block';
+            });
+            imported.querySelectorAll('.chart-carousel .chart-canvas').forEach(el => {
+              el.classList.add('is-active');
+              el.style.opacity = '1';
+              el.style.visibility = 'visible';
+              el.style.position = 'static';
+              el.style.marginBottom = '1rem';
+            });
+            imported.querySelectorAll('.chart-carousel .carousel-dots').forEach(dots => dots.remove());
             if (page === 'atelier1.html') {
               const graph = imported.querySelector('#atelier1-graph');
               if (graph) graph.remove();
